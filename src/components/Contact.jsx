@@ -48,7 +48,7 @@ function Contact() {
 
       <div className="contact-details">
         <p>
-          📧 <strong>Email:</strong> <a href="udaykiranvempati123@gmail.com">wellness@university.edu</a>
+          📧 <strong>Email:</strong> <a href="udaykiranvempati123@gmail.com">udaykiranvempati123@gmail.com</a>
         </p>
         <p>
           📞 <strong>Phone:</strong> +91 8185892753
