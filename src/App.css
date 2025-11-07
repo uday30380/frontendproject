@@ -1530,3 +1530,128 @@ body {
     width: 95%;
   }
 }
+/* ==========================================================
+   🖥️ GLOBAL FULL-SCREEN & RESPONSIVE FIX
+   ========================================================== */
+
+/* Full viewport for all pages */
+html, body, #root, .App {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-background);
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Ensure App uses full height */
+.App {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Allow every section to stretch full screen width */
+.homepage,
+.page-wrapper,
+.about-section,
+.contact-section,
+.dashboard,
+.auth-page {
+  width: 100%;
+  min-height: 100vh;
+  padding: var(--space-24);
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Remove restrictive widths */
+.page-wrapper,
+.about-section,
+.contact-section {
+  max-width: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Navbar should always stretch full width */
+.navbar {
+  width: 100%;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  border-bottom: 1px solid var(--color-card-border);
+  background-color: var(--color-surface);
+}
+
+/* Make the Navbar content evenly spaced on large screens */
+.navbar-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 var(--space-32);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Images should be responsive */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-lg);
+}
+
+/* Center alignment for About and Contact pages */
+.about-section,
+.contact-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Contact form input full width */
+.contact-form input,
+.contact-form textarea {
+  width: 80%;
+  max-width: 600px;
+}
+
+.contact-form button {
+  width: auto;
+  min-width: 160px;
+}
+
+/* Responsive layout */
+@media (max-width: 1024px) {
+  .homepage,
+  .page-wrapper,
+  .about-section,
+  .contact-section {
+    padding: var(--space-16);
+  }
+
+  .contact-form input,
+  .contact-form textarea {
+    width: 95%;
+  }
+
+  .navbar-container {
+    flex-direction: column;
+    gap: var(--space-16);
+    padding: var(--space-12);
+  }
+}
+
+/* Ensure consistent full-screen sections */
+section {
+  width: 100%;
+  min-height: 100vh;
+  padding: var(--space-32) var(--space-24);
+  box-sizing: border-box;
+}
