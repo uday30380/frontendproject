@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const StudentDashboard = ({ userData }) => {
-  const [progress] = useState({
+  const [progress, setProgress] = useState({
     mood: 2847,
     moodGrowth: '+12% from last month',
     challenges: [
@@ -11,16 +11,60 @@ const StudentDashboard = ({ userData }) => {
     ]
   });
 
+  const [events, setEvents] = useState([
+    { name: 'Stress Management Workshop', date: 'Today, 2:00 PM', registered: '28/30 registered', type: 'Workshop', joined: false },
+    { name: 'Group Counseling Session', date: 'Tomorrow, 10:00 AM', registered: '12/15 registered', type: 'Counseling', joined: false },
+    { name: 'Yoga & Mindfulness', date: 'Friday, 5:00 PM', registered: '18/25 registered', type: 'Fitness', joined: false }
+  ]);
+
+  const [xp, setXp] = useState(2114);
+  const [quote, setQuote] = useState('');
+
+  // 💡 Motivational Quotes
+  useEffect(() => {
+    const quotes = [
+      "Your mind is your strongest muscle — train it daily. 💪",
+      "Hydrate, rest, and rise stronger every day. 🌞",
+      "Progress, not perfection — one step at a time. 🧘‍♀️",
+      "Small wins make big differences. Keep going! 🌱",
+      "Your wellness journey starts with self-care. ❤️"
+    ];
+    setQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+  }, []);
+
+  // ✅ Function: Update Challenge Progress
+  const updateChallenge = (index) => {
+    setProgress(prev => {
+      const updated = [...prev.challenges];
+      if (updated[index].progress < updated[index].total) {
+        updated[index].progress += 1;
+        setXp(xp + 5); // Add XP per update
+      }
+      return { ...prev, challenges: updated };
+    });
+  };
+
+  // ✅ Function: Join / Leave Events
+  const toggleJoin = (index) => {
+    setEvents(prev => {
+      const updated = [...prev];
+      updated[index].joined = !updated[index].joined;
+      setXp(xp + (updated[index].joined ? 20 : -10)); // gain/lose XP
+      return updated;
+    });
+  };
+
   return (
     <div className="dashboard">
       <div className="dashboard-container">
         <div className="dashboard-header">
           <div>
             <h1>Welcome back, Alex Johnson! 👋</h1>
+            <p style={{ color: 'var(--color-primary)', marginTop: '8px' }}>{quote}</p>
             <div className="progress-badge">
               <span className="badge badge-gold">Gold</span>
               <span className="streak">🔥 7 day streak</span>
-              <span className="points">2,114 / 3,000 XP</span>
+              <span className="points">{xp.toLocaleString()} / 3,000 XP</span>
             </div>
           </div>
         </div>
@@ -58,7 +102,7 @@ const StudentDashboard = ({ userData }) => {
                   <div className="challenge-details">
                     <div className="challenge-name">{challenge.name}</div>
                     <div className="challenge-meta">
-                      {challenge.progress}/{challenge.total} {typeof challenge.total === 'string' ? '' : 'completed'}
+                      {challenge.progress}/{challenge.total} completed
                     </div>
                   </div>
                   <div className="challenge-progress">
@@ -69,6 +113,7 @@ const StudentDashboard = ({ userData }) => {
                       ></div>
                     </div>
                   </div>
+                  <button className="btn btn-sm btn-outline" onClick={() => updateChallenge(index)}>+ Progress</button>
                 </div>
               ))}
               <button className="btn btn-outline btn-sm">Explore →</button>
@@ -180,7 +225,7 @@ const StudentDashboard = ({ userData }) => {
                   { name: 'Emily Chen', score: 3240, avatar: '👩' },
                   { name: 'Marcus Lee', score: 3180, avatar: '👨' },
                   { name: 'Sarah Wilson', score: 3120, avatar: '👩' },
-                  { name: 'You', score: 2847, avatar: '👤', isUser: true },
+                  { name: 'You', score: xp, avatar: '👤', isUser: true },
                   { name: 'Jake Smith', score: 2790, avatar: '👨' }
                 ].map((user, index) => (
                   <div key={index} className={`leaderboard-item ${user.isUser ? 'is-user' : ''}`}>
@@ -196,11 +241,7 @@ const StudentDashboard = ({ userData }) => {
             <div className="events-card">
               <h3>📅 Upcoming Events</h3>
               <div className="event-list">
-                {[
-                  { name: 'Stress Management Workshop', date: 'Today, 2:00 PM', registered: '28/30 registered', type: 'Workshop' },
-                  { name: 'Group Counseling Session', date: 'Tomorrow, 10:00 AM', registered: '12/15 registered', type: 'Counseling' },
-                  { name: 'Yoga & Mindfulness', date: 'Friday, 5:00 PM', registered: '18/25 registered', type: 'Fitness' }
-                ].map((event, index) => (
+                {events.map((event, index) => (
                   <div key={index} className="event-item">
                     <div className="event-type-badge">{event.type}</div>
                     <div className="event-name">{event.name}</div>
@@ -214,7 +255,12 @@ const StudentDashboard = ({ userData }) => {
                         ></div>
                       </div>
                     </div>
-                    <button className="btn btn-sm btn-primary">Join</button>
+                    <button 
+                      className={`btn btn-sm ${event.joined ? 'btn-outline' : 'btn-primary'}`}
+                      onClick={() => toggleJoin(index)}
+                    >
+                      {event.joined ? 'Leave Event' : 'Join Event'}
+                    </button>
                   </div>
                 ))}
               </div>

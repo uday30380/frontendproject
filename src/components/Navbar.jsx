@@ -1,18 +1,27 @@
 import React from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import "../App.css"; // or specific Navbar CSS if you have one
+import "../App.css"; // You can replace with a specific Navbar CSS if needed
 
-function Navbar() {
+function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to log out?")) {
+      onLogout();
+      navigate("/signin");
+    }
+  };
 
   return (
     <nav className="navbar">
       <div className="navbar-container">
+        {/* 🔹 Logo Section */}
         <div className="navbar-logo" onClick={() => navigate("/")}>
           <div className="logo-icon">🩺</div>
           <span className="logo-text">Student Wellness</span>
         </div>
 
+        {/* 🔹 Navigation Links */}
         <div className="navbar-links">
           <NavLink to="/" className={({ isActive }) => (isActive ? "active" : "")}>
             Home
@@ -34,13 +43,27 @@ function Navbar() {
           </NavLink>
         </div>
 
+        {/* 🔹 Actions Section */}
         <div className="navbar-actions">
-          <button className="btn btn-outline" onClick={() => navigate("/signin")}>
-            Sign In
-          </button>
-          <button className="btn btn-primary" onClick={() => navigate("/signup")}>
-            Sign Up
-          </button>
+          {user ? (
+            <>
+              <span className="navbar-user">
+                👤 {user.emailOrId || "User"} ({user.role})
+              </span>
+              <button className="btn btn-logout" onClick={handleLogout}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-outline" onClick={() => navigate("/signin")}>
+                Sign In
+              </button>
+              <button className="btn btn-primary" onClick={() => navigate("/signup")}>
+                Sign Up
+              </button>
+            </>
+          )}
         </div>
       </div>
     </nav>

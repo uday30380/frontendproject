@@ -1,7 +1,75 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 
 const AdminDashboard = ({ userData }) => {
+  const [events, setEvents] = useState([
+    { name: 'Stress Management Workshop', time: 'Today, 2:00 PM', registered: '28/30 registered', waitlist: 5, badge: 'Workshop' },
+    { name: 'Group Counseling Session', time: 'Tomorrow, 10:00 AM', registered: '12/15 registered', waitlist: 3, badge: 'Counseling' },
+    { name: 'Yoga & Mindfulness', time: 'Friday, 5:00 PM', registered: '18/25 registered', waitlist: 0, badge: 'Fitness' }
+  ]);
+
+  const [alerts, setAlerts] = useState([
+    { message: '2 students flagged for low participation', type: 'high' },
+    { message: '1 student missed 3 wellness sessions', type: 'medium' }
+  ]);
+
+  const [notifications, setNotifications] = useState([
+    { type: 'Monthly Report', icon: '📊', time: 'Last sent: 2 days ago' },
+    { type: 'Event Reminder', icon: '📅', time: 'Scheduled for tomorrow' },
+    { type: 'Progress Update', icon: '📈', time: 'Last sent: 1 week ago' }
+  ]);
+
+  // ✅ Add New Event
+  const addEvent = () => {
+    const newEvent = {
+      name: `New Wellness Event #${events.length + 1}`,
+      time: 'Next Week, 4:00 PM',
+      registered: '0/20 registered',
+      waitlist: 0,
+      badge: 'New'
+    };
+    setEvents([...events, newEvent]);
+    alert('✅ New event created successfully!');
+  };
+
+  // 🤖 Add AI Alert
+  const generateAIAlert = () => {
+    const randomAlert = {
+      message: `AI detected abnormal mood pattern in Student #${Math.floor(Math.random() * 900 + 100)}`,
+      type: 'critical'
+    };
+    setAlerts([...alerts, randomAlert]);
+  };
+
+  // 🔔 Send Notification
+  const sendNotification = () => {
+    const newNotification = {
+      type: 'Wellness Update',
+      icon: '💬',
+      time: 'Sent just now'
+    };
+    setNotifications([...notifications, newNotification]);
+    alert('📢 Notification sent to all students and parents!');
+  };
+
+  // 📥 Download Report
+  const downloadReport = () => {
+    const report = `
+    📊 STUDENT WELLNESS ADMIN REPORT
+    --------------------------------
+    Total Events: ${events.length}
+    Active Alerts: ${alerts.length}
+    Parent Notifications: ${notifications.length}
+    Student Engagement: 84%
+    At-Risk Students: 23
+    Updated: ${new Date().toLocaleString()}
+    `;
+    const blob = new Blob([report], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'Admin_Report.txt';
+    link.click();
+  };
+
   return (
     <div className="dashboard admin-dashboard">
       <div className="dashboard-container">
@@ -25,10 +93,8 @@ const AdminDashboard = ({ userData }) => {
         <div className="alert-box">
           <div className="alert-icon">⚠️</div>
           <div className="alert-content">
-            <strong>3 students</strong> require immediate attention, 
-            <strong> 2 high-risk</strong> and 
-            <strong> 1 medium-risk</strong> alerts detected.
-            <a href="#alerts">View Risk Alerts →</a>
+            <strong>{alerts.length} active alerts</strong> detected by AI monitoring system.
+            <a href="#alerts"> View Alerts →</a>
           </div>
         </div>
 
@@ -62,7 +128,7 @@ const AdminDashboard = ({ userData }) => {
             <div>
               <div className="stat-label">Active Programs</div>
               <div className="stat-value">18</div>
-              <div className="stat-change">📊 3 starting this week</div>
+              <div className="stat-change">🗓 3 starting this week</div>
             </div>
           </div>
         </div>
@@ -71,20 +137,16 @@ const AdminDashboard = ({ userData }) => {
           <div className="main-content">
             <div className="quick-actions-card">
               <h3>⚡ Quick Actions</h3>
-              <button className="action-btn">➕ Create New Wellness Event</button>
-              <button className="action-btn">📧 Send Wellness Survey</button>
-              <button className="action-btn">📊 Generate Analytics Report</button>
-              <button className="action-btn">🔔 Send Parent Notifications</button>
+              <button className="action-btn" onClick={addEvent}>➕ Create New Wellness Event</button>
+              <button className="action-btn" onClick={sendNotification}>📧 Send Wellness Notification</button>
+              <button className="action-btn" onClick={generateAIAlert}>🤖 Generate AI Alert</button>
+              <button className="action-btn" onClick={downloadReport}>📊 Download Report</button>
             </div>
 
             <div className="events-today-card">
-              <h3>📅 Today's Events</h3>
+              <h3>📅 Today's & Upcoming Events</h3>
               <div className="event-list">
-                {[
-                  { name: 'Stress Management Workshop', time: 'Today, 2:00 PM', registered: '28/30 registered', waitlist: 5, badge: 'Workshop' },
-                  { name: 'Group Counseling Session', time: 'Tomorrow, 10:00 AM', registered: '12/15 registered', waitlist: 3, badge: 'Counseling' },
-                  { name: 'Yoga & Mindfulness', time: 'Friday, 5:00 PM', registered: '18/25 registered', waitlist: 0, badge: 'Fitness' }
-                ].map((event, index) => (
+                {events.map((event, index) => (
                   <div key={index} className="admin-event-item">
                     <div className="event-header">
                       <span className="event-badge">{event.badge}</span>
@@ -98,9 +160,15 @@ const AdminDashboard = ({ userData }) => {
                       </div>
                     </div>
                     <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{width: `${(parseInt(event.registered.split('/')[0])/parseInt(event.registered.split('/')[1]))*100}%`}}
+                      <div
+                        className="progress-fill"
+                        style={{
+                          width: `${
+                            (parseInt(event.registered.split('/')[0]) /
+                              parseInt(event.registered.split('/')[1])) *
+                            100
+                          }%`,
+                        }}
                       ></div>
                     </div>
                   </div>
@@ -114,11 +182,7 @@ const AdminDashboard = ({ userData }) => {
               <h3>👨‍👩‍👧 Parent Notifications</h3>
               <p>Send wellness updates to parents</p>
               <div className="notification-list">
-                {[
-                  { type: 'Monthly Report', icon: '📊', time: 'Last sent: 2 days ago' },
-                  { type: 'Event Reminder', icon: '📅', time: 'Scheduled for tomorrow' },
-                  { type: 'Progress Update', icon: '📈', time: 'Last sent: 1 week ago' }
-                ].map((notif, index) => (
+                {notifications.map((notif, index) => (
                   <div key={index} className="notification-item">
                     <div className="notif-icon">{notif.icon}</div>
                     <div>
@@ -128,6 +192,17 @@ const AdminDashboard = ({ userData }) => {
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="ai-alerts-card">
+              <h3>🚨 AI Alerts</h3>
+              <ul>
+                {alerts.map((a, i) => (
+                  <li key={i} style={{ color: a.type === 'critical' ? 'red' : 'orange' }}>
+                    {a.message}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>

@@ -1,39 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-const SignIn = ({ onLogin, onNavigate }) => {
+const SignIn = ({ onLogin }) => {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
-    loginAs: 'Student',
-    emailOrId: '',
-    password: '',
-    rememberMe: false
+    loginAs: "Student",
+    emailOrId: "",
+    password: "",
+    rememberMe: false,
   });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onLogin(formData.emailOrId, formData.password, formData.loginAs);
+
+    // Simple client-side validation
+    if (!formData.emailOrId || !formData.password) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
+    // Call onLogin if provided (optional)
+    if (onLogin) {
+      onLogin(formData.emailOrId, formData.password, formData.loginAs);
+    }
+
+    // Navigate based on login type
+    if (formData.loginAs === "Admin") {
+      navigate("/admin-dashboard");
+    } else {
+      navigate("/student-dashboard");
+    }
   };
 
   return (
     <div className="auth-page">
       <div className="auth-container">
+        {/* LEFT SIDE */}
         <div className="auth-left">
-          <button className="back-button" onClick={() => onNavigate('home')}>
+          <button className="back-button" onClick={() => navigate("/")}>
             ← Back to Home
           </button>
-          
+
           <div className="auth-branding">
             <div className="logo-icon">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
-                <path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path
+                  d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M9 12L11 14L15 10"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </div>
             <h1 className="brand-name">WellnessHub</h1>
@@ -42,19 +73,31 @@ const SignIn = ({ onLogin, onNavigate }) => {
 
           <div className="community-info">
             <h2>Welcome Back!</h2>
-            <p>Access your personalized wellness dashboard and continue your journey to better health and well-being.</p>
-            
+            <p>
+              Access your personalized wellness dashboard and continue your
+              journey to better health and well-being.
+            </p>
+
             <div className="feature-list">
               <div className="feature-item">
-                <div className="feature-dot" style={{backgroundColor: '#34D399'}}></div>
+                <div
+                  className="feature-dot"
+                  style={{ backgroundColor: "#34D399" }}
+                ></div>
                 <span>24/7 Mental Health Support</span>
               </div>
               <div className="feature-item">
-                <div className="feature-dot" style={{backgroundColor: '#60A5FA'}}></div>
+                <div
+                  className="feature-dot"
+                  style={{ backgroundColor: "#60A5FA" }}
+                ></div>
                 <span>Personalized Fitness Programs</span>
               </div>
               <div className="feature-item">
-                <div className="feature-dot" style={{backgroundColor: '#F87171'}}></div>
+                <div
+                  className="feature-dot"
+                  style={{ backgroundColor: "#F87171" }}
+                ></div>
                 <span>Expert Nutrition Guidance</span>
               </div>
             </div>
@@ -62,11 +105,19 @@ const SignIn = ({ onLogin, onNavigate }) => {
             <div className="community-image">
               <div className="verified-badge">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M9 12L11 14L15 10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                  <path
+                    d="M9 12L11 14L15 10"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                 </svg>
                 <span>Verified Safe</span>
               </div>
-              <img src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop" alt="Wellness community" />
+              <img
+                src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop"
+                alt="Wellness community"
+              />
               <div className="member-count">
                 <div className="member-icon">👥</div>
                 <div>
@@ -78,6 +129,7 @@ const SignIn = ({ onLogin, onNavigate }) => {
           </div>
         </div>
 
+        {/* RIGHT SIDE */}
         <div className="auth-right">
           <div className="auth-form-container">
             <h2>Sign In</h2>
@@ -85,8 +137,8 @@ const SignIn = ({ onLogin, onNavigate }) => {
             <form onSubmit={handleSubmit} className="auth-form">
               <div className="form-group">
                 <label className="form-label">Login As</label>
-                <select 
-                  name="loginAs" 
+                <select
+                  name="loginAs"
                   value={formData.loginAs}
                   onChange={handleChange}
                   className="form-control"
@@ -133,7 +185,9 @@ const SignIn = ({ onLogin, onNavigate }) => {
                   />
                   <label htmlFor="remember">Remember me</label>
                 </div>
-                <a href="#forgot" className="forgot-link">Forgot password?</a>
+                <a href="#forgot" className="forgot-link">
+                  Forgot password?
+                </a>
               </div>
 
               <button type="submit" className="btn btn-primary btn-full-width">
@@ -141,7 +195,17 @@ const SignIn = ({ onLogin, onNavigate }) => {
               </button>
 
               <div className="auth-footer">
-                Don't have an account? <a href="#" onClick={() => onNavigate('signup')}>Sign up</a>
+                Don't have an account?{" "}
+                <span
+                  onClick={() => navigate("/signup")}
+                  style={{
+                    color: "var(--color-primary)",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Sign Up
+                </span>
               </div>
             </form>
           </div>
