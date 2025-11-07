@@ -1,47 +1,50 @@
-import React from 'react';
+import React from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import "../App.css"; // or specific Navbar CSS if you have one
 
-const Navbar = ({ onNavigate, isLoggedIn, onLogout }) => {
+function Navbar() {
+  const navigate = useNavigate();
+
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <div className="navbar-logo" onClick={() => onNavigate('home')}>
-          <div className="logo-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2"/>
-              <path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <span className="logo-text">WellnessHub</span>
+        <div className="navbar-logo" onClick={() => navigate("/")}>
+          <div className="logo-icon">🩺</div>
+          <span className="logo-text">Student Wellness</span>
         </div>
-        
+
         <div className="navbar-links">
-          <a href="#" onClick={() => onNavigate('home')}>Home</a>
-          <a href="#about">About</a>
-          <a href="#contact">Contact</a>
+          <NavLink to="/" className={({ isActive }) => (isActive ? "active" : "")}>
+            Home
+          </NavLink>
+          <NavLink to="/wellness-programs" className={({ isActive }) => (isActive ? "active" : "")}>
+            Wellness
+          </NavLink>
+          <NavLink to="/health-advice" className={({ isActive }) => (isActive ? "active" : "")}>
+            Health Advice
+          </NavLink>
+          <NavLink to="/support-services" className={({ isActive }) => (isActive ? "active" : "")}>
+            Support
+          </NavLink>
+          <NavLink to="/about" className={({ isActive }) => (isActive ? "active" : "")}>
+            About
+          </NavLink>
+          <NavLink to="/contact" className={({ isActive }) => (isActive ? "active" : "")}>
+            Contact
+          </NavLink>
         </div>
-        
+
         <div className="navbar-actions">
-          {!isLoggedIn ? (
-            <>
-              <button className="btn btn-outline" onClick={() => onNavigate('signin')}>
-                Login
-              </button>
-              <button className="btn btn-primary" onClick={() => onNavigate('signup')}>
-                Sign Up
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="admin-label">Admin</span>
-              <button className="btn btn-outline" onClick={onLogout}>
-                Logout
-              </button>
-            </>
-          )}
+          <button className="btn btn-outline" onClick={() => navigate("/signin")}>
+            Sign In
+          </button>
+          <button className="btn btn-primary" onClick={() => navigate("/signup")}>
+            Sign Up
+          </button>
         </div>
       </div>
     </nav>
   );
-};
+}
 
 export default Navbar;

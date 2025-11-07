@@ -1,56 +1,51 @@
-import React, { useState } from 'react';
-import Navbar from './components/Navbar';
-import HomePage from './components/HomePage';
-import SignUp from './components/SignUp';
-import SignIn from './components/SignIn';
-import StudentDashboard from './components/StudentDashboard';
-import AdminDashboard from './components/AdminDashboard';
-import './App.css';
+import React from "react";
+import {
+  createBrowserRouter,
+  createRoutesFromElements,
+  RouterProvider,
+  Route,
+} from "react-router-dom";
+
+import Navbar from "./components/Navbar";
+import HomePage from "./components/HomePage";
+import SignIn from "./components/SignIn";
+import SignUp from "./components/SignUp";
+import AdminDashboard from "./components/AdminDashboard";
+import StudentDashboard from "./components/StudentDashboard";
+import WellnessPrograms from "./components/WellnessPrograms";
+import HealthAdvice from "./components/HealthAdvice";
+import SupportServices from "./components/SupportServices";
+import About from "./components/About";
+import Contact from "./components/Contact";
+import "./App.css";
+
+// ✅ Layout component with Navbar
+const Layout = ({ children }) => (
+  <>
+    <Navbar />
+    {children}
+  </>
+);
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-  const [userType, setUserType] = useState('');
-  const [userData, setUserData] = useState(null);
-
-  const handleNavigation = (page) => {
-    setCurrentPage(page);
-  };
-
-  const handleLogin = (email, password, type) => {
-    // In a real app, you'd validate credentials here
-    setUserData({ email, userType: type });
-    setUserType(type);
-    setCurrentPage(type === 'Student' ? 'studentDashboard' : 'adminDashboard');
-  };
-
-  const handleSignUp = (formData) => {
-    // In a real app, you'd send this to a backend
-    setUserData({ email: formData.email, userType: formData.accountType });
-    setUserType(formData.accountType);
-    setCurrentPage(formData.accountType === 'Student Account' ? 'studentDashboard' : 'adminDashboard');
-  };
-
-  const handleLogout = () => {
-    setUserData(null);
-    setUserType('');
-    setCurrentPage('home');
-  };
-
-  return (
-    <div className="App">
-      <Navbar 
-        onNavigate={handleNavigation} 
-        isLoggedIn={!!userData}
-        onLogout={handleLogout}
-      />
-      
-      {currentPage === 'home' && <HomePage onNavigate={handleNavigation} />}
-      {currentPage === 'signup' && <SignUp onSignUp={handleSignUp} onNavigate={handleNavigation} />}
-      {currentPage === 'signin' && <SignIn onLogin={handleLogin} onNavigate={handleNavigation} />}
-      {currentPage === 'studentDashboard' && <StudentDashboard userData={userData} />}
-      {currentPage === 'adminDashboard' && <AdminDashboard userData={userData} />}
-    </div>
+  const router = createBrowserRouter(
+    createRoutesFromElements(
+      <>
+        <Route path="/" element={<Layout><HomePage /></Layout>} />
+        <Route path="/signin" element={<Layout><SignIn /></Layout>} />
+        <Route path="/signup" element={<Layout><SignUp /></Layout>} />
+        <Route path="/admin-dashboard" element={<Layout><AdminDashboard /></Layout>} />
+        <Route path="/student-dashboard" element={<Layout><StudentDashboard /></Layout>} />
+        <Route path="/wellness-programs" element={<Layout><WellnessPrograms /></Layout>} />
+        <Route path="/health-advice" element={<Layout><HealthAdvice /></Layout>} />
+        <Route path="/support-services" element={<Layout><SupportServices /></Layout>} />
+        <Route path="/about" element={<Layout><About /></Layout>} />
+        <Route path="/contact" element={<Layout><Contact /></Layout>} />
+      </>
+    )
   );
+
+  return <RouterProvider router={router} />;
 }
 
 export default App;
