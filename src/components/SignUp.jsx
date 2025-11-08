@@ -1,9 +1,6 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
-const SignUp = ({ onSignUp }) => {
-  const navigate = useNavigate();
-
+const SignUp = ({ onSignUp, onNavigate }) => {
   const [formData, setFormData] = useState({
     accountType: "Student Account",
     fullName: "",
@@ -26,34 +23,24 @@ const SignUp = ({ onSignUp }) => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      alert("❌ Passwords do not match!");
+      alert("Passwords do not match!");
       return;
     }
 
     if (!formData.agreeToTerms) {
-      alert("⚠ Please agree to the Terms of Service and Privacy Policy");
+      alert("Please agree to the Terms of Service and Privacy Policy");
       return;
     }
 
-    // Trigger optional callback
-    if (onSignUp) onSignUp(formData);
-
-    alert("✅ Account created successfully!");
-
-    // Navigate based on account type
-    if (formData.accountType === "Admin Account") {
-      navigate("/admin-dashboard");
-    } else {
-      navigate("/student-dashboard");
-    }
+    onSignUp(formData);
   };
 
   return (
     <div className="auth-page">
       <div className="auth-container">
-        {/* LEFT SIDE */}
+        {/* Left Info Section */}
         <div className="auth-left">
-          <button className="back-button" onClick={() => navigate("/")}>
+          <button className="back-button" onClick={() => onNavigate("home")}>
             ← Back to Home
           </button>
 
@@ -81,8 +68,9 @@ const SignUp = ({ onSignUp }) => {
           <div className="community-info">
             <h2>Join Our Community</h2>
             <p>
-              Start your wellness journey with health resources, fitness
-              programs, and mental health support designed for students.
+              Start your wellness journey with comprehensive health resources,
+              fitness programs, and mental health support designed specifically
+              for students.
             </p>
 
             <div className="feature-list">
@@ -111,7 +99,12 @@ const SignUp = ({ onSignUp }) => {
 
             <div className="community-image">
               <div className="verified-badge">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <path
                     d="M9 12L11 14L15 10"
                     stroke="white"
@@ -136,13 +129,14 @@ const SignUp = ({ onSignUp }) => {
           </div>
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* Right Form Section */}
         <div className="auth-right">
           <div className="auth-form-container">
             <h2>Create Account</h2>
             <div className="trust-badge">⭐⭐⭐⭐⭐ Trusted by 10,000+ students</div>
 
             <form onSubmit={handleSubmit} className="auth-form">
+              {/* Account Type */}
               <div className="form-group">
                 <label className="form-label">Account Type</label>
                 <select
@@ -155,10 +149,12 @@ const SignUp = ({ onSignUp }) => {
                   <option value="Admin Account">Admin Account</option>
                 </select>
                 <p className="form-help-text">
-                  Access wellness programs, resources, and track your progress
+                  Access wellness programs, health resources, and track your
+                  progress
                 </p>
               </div>
 
+              {/* Full Name */}
               <div className="form-group">
                 <label className="form-label">Full Name</label>
                 <input
@@ -172,19 +168,23 @@ const SignUp = ({ onSignUp }) => {
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Student ID</label>
-                <input
-                  type="text"
-                  name="studentId"
-                  value={formData.studentId}
-                  onChange={handleChange}
-                  placeholder="Enter your student ID"
-                  className="form-control"
-                  required
-                />
-              </div>
+              {/* Student ID - only for Student Account */}
+              {formData.accountType === "Student Account" && (
+                <div className="form-group">
+                  <label className="form-label">Student ID</label>
+                  <input
+                    type="text"
+                    name="studentId"
+                    value={formData.studentId}
+                    onChange={handleChange}
+                    placeholder="Enter your student ID"
+                    className="form-control"
+                    required
+                  />
+                </div>
+              )}
 
+              {/* Email */}
               <div className="form-group">
                 <label className="form-label">Email</label>
                 <input
@@ -192,12 +192,13 @@ const SignUp = ({ onSignUp }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="Enter your email"
+                  placeholder="Enter your email address"
                   className="form-control"
                   required
                 />
               </div>
 
+              {/* Password */}
               <div className="form-group">
                 <label className="form-label">Password</label>
                 <input
@@ -211,6 +212,7 @@ const SignUp = ({ onSignUp }) => {
                 />
               </div>
 
+              {/* Confirm Password */}
               <div className="form-group">
                 <label className="form-label">Confirm Password</label>
                 <input
@@ -224,6 +226,7 @@ const SignUp = ({ onSignUp }) => {
                 />
               </div>
 
+              {/* Terms Agreement */}
               <div className="form-checkbox">
                 <input
                   type="checkbox"
@@ -234,28 +237,21 @@ const SignUp = ({ onSignUp }) => {
                   required
                 />
                 <label htmlFor="terms">
-                  I agree to the{" "}
-                  <a href="#terms">Terms of Service</a> and{" "}
+                  I agree to the <a href="#terms">Terms of Service</a> and{" "}
                   <a href="#privacy">Privacy Policy</a>
                 </label>
               </div>
 
+              {/* Submit Button */}
               <button type="submit" className="btn btn-primary btn-full-width">
                 Create Account
               </button>
 
               <div className="auth-footer">
                 Already have an account?{" "}
-                <span
-                  onClick={() => navigate("/signin")}
-                  style={{
-                    color: "var(--color-primary)",
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                  }}
-                >
-                  Sign In
-                </span>
+                <a href="#" onClick={() => onNavigate("signin")}>
+                  Sign in
+                </a>
               </div>
             </form>
           </div>
