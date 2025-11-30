@@ -2318,3 +2318,14 @@ html {
     width: 100%;
   }
 }
+
+/* --- Quick Actions --- */
+.action-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.action-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  background: var(--color-surface-glass-hover) !important;
+}

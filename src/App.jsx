@@ -22,8 +22,13 @@ import Contact from "./components/Contact";
 import ProgramDetails from "./components/ProgramDetails";
 import Profile from "./components/Profile";
 import ChatBot from "./components/ChatBot";
+import SavedItems from "./components/SavedItems";
+import MyPrograms from "./components/MyPrograms";
+import AppointmentBooking from "./components/AppointmentBooking";
+import MyAppointments from "./components/MyAppointments";
 
 import "./App.css";
+import "./components-styles.css";
 
 // ✅ Layout Wrapper
 const Layout = ({ user, onLogout, theme, toggleTheme, notifications, markAsRead, markAllAsRead, children }) => (
@@ -318,6 +323,28 @@ function App() {
         return s;
       })
     );
+  };
+
+  // ✅ Toggle Saved Program
+  const toggleSaveProgram = (studentId, programId) => {
+    setStudents((prev) =>
+      prev.map((s) => {
+        if (s.id === studentId) {
+          const currentSaved = s.savedPrograms || [];
+          if (currentSaved.includes(programId)) {
+            return { ...s, savedPrograms: currentSaved.filter((id) => id !== programId) };
+          } else {
+            return { ...s, savedPrograms: [...currentSaved, programId] };
+          }
+        }
+        return s;
+      })
+    );
+  };
+
+  // ✅ Cancel Appointment
+  const cancelAppointment = (appointmentId) => {
+    setAppointments((prev) => prev.filter((apt) => apt.id !== appointmentId));
   };
 
   // ✅ Resource Management Functions
@@ -673,12 +700,88 @@ function App() {
           path="/profile"
           element={
             user ? (
-              <Layout user={user} onLogout={handleLogout}>
+              <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
                 <Profile
                   user={user}
                   setUser={setUser}
                   studentData={students.find((s) => s.id === user.studentId)}
                   updateOwnData={updateOwnData}
+                />
+              </Layout>
+            ) : (
+              <Navigate to="/signin" />
+            )
+          }
+        />
+
+        {/* Saved Items */}
+        <Route
+          path="/saved-items"
+          element={
+            user ? (
+              <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
+                <SavedItems
+                  savedResources={students.find((s) => s.id === user?.studentId)?.savedResources || []}
+                  resources={resources}
+                  savedPrograms={students.find((s) => s.id === user?.studentId)?.savedPrograms || []}
+                  programs={programs}
+                  toggleSaveResource={toggleSaveResource}
+                  toggleSaveProgram={toggleSaveProgram}
+                  userId={user.studentId}
+                />
+              </Layout>
+            ) : (
+              <Navigate to="/signin" />
+            )
+          }
+        />
+
+        {/* My Programs */}
+        <Route
+          path="/my-programs"
+          element={
+            user ? (
+              <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
+                <MyPrograms
+                  enrolledPrograms={students.find((s) => s.id === user?.studentId)?.enrolledPrograms || []}
+                  programs={programs}
+                  leaveProgram={leaveProgram}
+                  userId={user.studentId}
+                />
+              </Layout>
+            ) : (
+              <Navigate to="/signin" />
+            )
+          }
+        />
+
+        {/* Book Appointment */}
+        <Route
+          path="/book-appointment"
+          element={
+            user ? (
+              <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
+                <AppointmentBooking
+                  user={user}
+                  addAppointment={addAppointment}
+                />
+              </Layout>
+            ) : (
+              <Navigate to="/signin" />
+            )
+          }
+        />
+
+        {/* My Appointments */}
+        <Route
+          path="/my-appointments"
+          element={
+            user ? (
+              <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
+                <MyAppointments
+                  appointments={appointments}
+                  user={user}
+                  cancelAppointment={cancelAppointment}
                 />
               </Layout>
             ) : (

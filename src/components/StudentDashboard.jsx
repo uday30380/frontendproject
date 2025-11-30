@@ -226,6 +226,33 @@ const StudentDashboard = ({ user, studentData, enrollInProgram, leaveProgram, an
           </div>
         </div>
 
+        {/* Quick Actions */}
+        <div className="dashboard-section" style={{ marginBottom: '2rem' }}>
+          <div className="section-header">
+            <h2>🚀 Quick Actions</h2>
+          </div>
+          <div className="wellness-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem' }}>
+            <button className="card action-card" onClick={() => navigate('/my-programs')} style={{ padding: '1.5rem', textAlign: 'center', cursor: 'pointer', border: 'none', background: 'var(--color-surface-glass)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🎯</div>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0' }}>My Programs</h3>
+            </button>
+            <button className="card action-card" onClick={() => navigate('/saved-items')} style={{ padding: '1.5rem', textAlign: 'center', cursor: 'pointer', border: 'none', background: 'var(--color-surface-glass)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📚</div>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0' }}>Saved Items</h3>
+            </button>
+            <button className="card action-card" onClick={() => navigate('/book-appointment')} style={{ padding: '1.5rem', textAlign: 'center', cursor: 'pointer', border: 'none', background: 'var(--color-surface-glass)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📅</div>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0' }}>Book Session</h3>
+            </button>
+            <button className="card action-card" onClick={() => navigate('/my-appointments')} style={{ padding: '1.5rem', textAlign: 'center', cursor: 'pointer', border: 'none', background: 'var(--color-surface-glass)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0' }}>My Appointments</h3>
+            </button>
+          </div>
+        </div>
+
+
+
         {/* Active Programs Section */}
         {studentData?.enrolledPrograms?.length > 0 && (
           <div className="dashboard-section" style={{ marginBottom: '2rem' }}>
@@ -610,11 +637,11 @@ const StudentDashboard = ({ user, studentData, enrollInProgram, leaveProgram, an
           <div className="achievement-card">
             <h3>🏆 Achievement</h3>
             <div className="achievement-list">
-              {[
+              {(studentData?.achievements || [
                 { title: "Level 3", subtitle: "Keep up the great work!", xp: "1,550 XP" },
                 { title: "Level 2", subtitle: "You're making progress!", xp: "950 XP" },
                 { title: "Level 1", subtitle: "Just getting started!", xp: "475 XP" },
-              ].map((achievement, index) => (
+              ]).map((achievement, index) => (
                 <div key={index} className="achievement-item">
                   <div className="achievement-icon" aria-hidden="true">
                     {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
@@ -633,13 +660,13 @@ const StudentDashboard = ({ user, studentData, enrollInProgram, leaveProgram, an
           <div className="leaderboard-card">
             <h3>🏅 LeaderBoard</h3>
             <div className="leaderboard-list">
-              {[
+              {(studentData?.leaderboard || [
                 { name: "Emily Chen", score: 3240, avatar: "👩" },
                 { name: "Marcus Lee", score: 3180, avatar: "👨" },
                 { name: "Sarah Wilson", score: 3120, avatar: "👩" },
                 { name: "You", score: xp, avatar: "👤", isUser: true },
                 { name: "Jake Smith", score: 2790, avatar: "👨" },
-              ].map((user, index) => (
+              ]).map((user, index) => (
                 <div
                   key={index}
                   className={`leaderboard-item ${user.isUser ? "is-user" : ""}`}

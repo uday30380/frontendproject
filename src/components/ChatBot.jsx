@@ -8,6 +8,8 @@ const ChatBot = () => {
     const [input, setInput] = useState("");
     const messagesEndRef = useRef(null);
 
+    const [isTyping, setIsTyping] = useState(false);
+
     const toggleChat = () => setIsOpen(!isOpen);
 
     const scrollToBottom = () => {
@@ -16,7 +18,7 @@ const ChatBot = () => {
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, isOpen]);
+    }, [messages, isOpen, isTyping]);
 
     const handleSend = (e) => {
         e.preventDefault();
@@ -25,12 +27,14 @@ const ChatBot = () => {
         const userMessage = { id: Date.now(), text: input, sender: "user" };
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
+        setIsTyping(true);
 
         // Simulate bot response
         setTimeout(() => {
             const botResponse = getBotResponse(input);
             setMessages((prev) => [...prev, { id: Date.now() + 1, text: botResponse, sender: "bot" }]);
-        }, 1000);
+            setIsTyping(false);
+        }, 1500);
     };
 
     const getBotResponse = (text) => {
@@ -77,6 +81,13 @@ const ChatBot = () => {
                                 <div className="message-bubble">{msg.text}</div>
                             </div>
                         ))}
+                        {isTyping && (
+                            <div className="chat-message bot">
+                                <div className="message-bubble typing-indicator">
+                                    <span>.</span><span>.</span><span>.</span>
+                                </div>
+                            </div>
+                        )}
                         <div ref={messagesEndRef} />
                     </div>
 
