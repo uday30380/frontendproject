@@ -7,11 +7,15 @@ const Profile = ({ user, setUser }) => {
         email: "",
         studentId: "",
         role: "",
+        department: "",
+        year: "",
         password: "",
         confirmPassword: "",
+        avatar: ""
     });
 
     const [isEditing, setIsEditing] = useState(false);
+    const [previewImage, setPreviewImage] = useState(null);
 
     useEffect(() => {
         if (user) {
@@ -20,14 +24,30 @@ const Profile = ({ user, setUser }) => {
                 email: user.email || "",
                 studentId: user.studentId || "",
                 role: user.role || "",
+                department: user.department || "",
+                year: user.year || "",
                 password: user.password || "",
                 confirmPassword: user.password || "",
+                avatar: user.avatar || ""
             });
+            setPreviewImage(user.avatar || null);
         }
     }, [user]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handlePhotoUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreviewImage(reader.result);
+                setFormData({ ...formData, avatar: reader.result });
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleSave = (e) => {
@@ -42,7 +62,10 @@ const Profile = ({ user, setUser }) => {
         const updatedUser = {
             ...user,
             name: formData.name,
+            department: formData.department,
+            year: formData.year,
             password: formData.password,
+            avatar: formData.avatar
         };
 
         // Update localStorage
@@ -69,12 +92,32 @@ const Profile = ({ user, setUser }) => {
                     <div className="card">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                                <div className="student-avatar" style={{ width: "64px", height: "64px", fontSize: "2rem" }}>
-                                    {formData.name.charAt(0)}
+                                <div className="student-avatar" style={{ width: "80px", height: "80px", fontSize: "2.5rem", position: "relative", overflow: "hidden" }}>
+                                    {previewImage ? (
+                                        <img src={previewImage} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                    ) : (
+                                        formData.name.charAt(0)
+                                    )}
+                                    {isEditing && (
+                                        <label htmlFor="avatar-upload" style={{
+                                            position: "absolute", bottom: 0, left: 0, right: 0,
+                                            background: "rgba(0,0,0,0.6)", color: "white", fontSize: "0.8rem",
+                                            textAlign: "center", cursor: "pointer", padding: "2px"
+                                        }}>
+                                            📷
+                                            <input
+                                                id="avatar-upload"
+                                                type="file"
+                                                accept="image/*"
+                                                style={{ display: "none" }}
+                                                onChange={handlePhotoUpload}
+                                            />
+                                        </label>
+                                    )}
                                 </div>
                                 <div>
                                     <h2 style={{ margin: 0 }}>{formData.name}</h2>
-                                    <p style={{ margin: 0 }}>{formData.role}</p>
+                                    <p style={{ margin: 0, opacity: 0.8 }}>{formData.role} • {formData.department || "No Dept"}</p>
                                 </div>
                             </div>
                             {!isEditing && (
@@ -98,6 +141,33 @@ const Profile = ({ user, setUser }) => {
                                 />
                             </div>
 
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                                <div className="form-group">
+                                    <label className="form-label">Department</label>
+                                    <input
+                                        type="text"
+                                        name="department"
+                                        className="form-control"
+                                        value={formData.department}
+                                        onChange={handleChange}
+                                        disabled={!isEditing}
+                                        placeholder="e.g. Computer Science"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Year / Semester</label>
+                                    <input
+                                        type="text"
+                                        name="year"
+                                        className="form-control"
+                                        value={formData.year}
+                                        onChange={handleChange}
+                                        disabled={!isEditing}
+                                        placeholder="e.g. 3rd Year"
+                                    />
+                                </div>
+                            </div>
+
                             <div className="form-group">
                                 <label className="form-label">Email</label>
                                 <input
@@ -105,10 +175,9 @@ const Profile = ({ user, setUser }) => {
                                     name="email"
                                     className="form-control"
                                     value={formData.email}
-                                    disabled={true} // Email usually shouldn't be changed easily as it's the ID
+                                    disabled={true}
                                     style={{ backgroundColor: "var(--color-surface-alt)", cursor: "not-allowed" }}
                                 />
-                                <p className="form-help-text">Email cannot be changed.</p>
                             </div>
 
                             <div className="form-group">
@@ -124,7 +193,8 @@ const Profile = ({ user, setUser }) => {
                             </div>
 
                             {isEditing && (
-                                <>
+                                <div style={{ marginTop: "2rem", padding: "1.5rem", background: "var(--color-surface-alt)", borderRadius: "var(--radius-md)" }}>
+                                    <h4 style={{ marginBottom: "1rem" }}>🔐 Change Password</h4>
                                     <div className="form-group">
                                         <label className="form-label">New Password</label>
                                         <input
@@ -154,13 +224,16 @@ const Profile = ({ user, setUser }) => {
                                             className="btn btn-outline"
                                             onClick={() => {
                                                 setIsEditing(false);
-                                                // Reset form to current user state
                                                 setFormData({
                                                     ...formData,
                                                     name: user.name,
+                                                    department: user.department,
+                                                    year: user.year,
                                                     password: user.password,
                                                     confirmPassword: user.password,
+                                                    avatar: user.avatar
                                                 });
+                                                setPreviewImage(user.avatar || null);
                                             }}
                                         >
                                             Cancel
@@ -169,7 +242,7 @@ const Profile = ({ user, setUser }) => {
                                             Save Changes
                                         </button>
                                     </div>
-                                </>
+                                </div>
                             )}
                         </form>
                     </div>

@@ -4,7 +4,7 @@ import jsPDF from "jspdf";
 import ActivityChart from "./charts/ActivityChart";
 import MoodTrendChart from "./charts/MoodTrendChart";
 
-const AdminDashboard = ({ students, setStudents, updateStudentData, resources, addResource, updateResource, deleteResource, programs, addProgram, updateProgram, deleteProgram, announcements, addAnnouncement, deleteAnnouncement, analytics, appointments = [], updateAppointmentStatus }) => {
+const AdminDashboard = ({ students, setStudents, updateStudentData, resources, addResource, updateResource, deleteResource, programs, addProgram, updateProgram, deleteProgram, announcements, addAnnouncement, deleteAnnouncement, analytics, appointments = [], updateAppointmentStatus, user }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("Dashboard Overview");
@@ -34,6 +34,7 @@ const AdminDashboard = ({ students, setStudents, updateStudentData, resources, a
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [appointmentAction, setAppointmentAction] = useState(""); // "Approve", "Reject", "Reschedule"
   const [appointmentNote, setAppointmentNote] = useState("");
+  const [rescheduleDate, setRescheduleDate] = useState("");
 
   // Resource Management State
   const [isEditingResource, setIsEditingResource] = useState(false);
@@ -140,7 +141,105 @@ const AdminDashboard = ({ students, setStudents, updateStudentData, resources, a
           <div className="section-header">
             <h2>Analytics Overview</h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: "2rem" }}>
+
+          {/* 🔔 Pending Appointments Widget */}
+          {appointments.some(a => a.status === 'Pending') && (
+            <div className="card" style={{ marginBottom: '2rem', borderLeft: '4px solid var(--color-warning)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  📅 Pending Appointment Requests
+                  <span className="badge badge-warning">{appointments.filter(a => a.status === 'Pending').length}</span>
+                </h3>
+                <button className="btn btn-sm btn-outline" onClick={() => setActiveTab("Appointments")}>View All</button>
+              </div>
+              <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+                {appointments.filter(a => a.status === 'Pending').slice(0, 3).map(appt => (
+                  <div key={appt.id} style={{ background: 'var(--color-surface-alt)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <span style={{ fontWeight: '600' }}>{appt.studentName}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{appt.date}</span>
+                    </div>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>
+                      {appt.type} • {appt.reason}
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <button
+                        className="btn btn-sm btn-success"
+                        style={{ flex: 1 }}
+                        onClick={() => updateAppointmentStatus(appt.id, "Confirmed", "Approved from Dashboard", user?.name || "Admin")}
+                      >
+                        Approve ✅
+                      </button>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        style={{ flex: 1 }}
+                        onClick={() => {
+                          setSelectedAppointment(appt);
+                          setAppointmentAction("Reject");
+                          setAppointmentNote("");
+                          setActiveTab("Appointments");
+                        }}
+                      >
+                        Reject ❌
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "2rem" }}>
+            {/* 📢 Quick Announcement Widget */}
+            <div className="card">
+              <h3 style={{ marginBottom: "1rem" }}>📢 Post Announcement</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <input
+                  type="text"
+                  placeholder="Title"
+                  style={{ padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-background)' }}
+                  value={newAnnouncement.title}
+                  onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
+                />
+                <textarea
+                  placeholder="Message..."
+                  rows="3"
+                  style={{ padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-background)', resize: 'none' }}
+                  value={newAnnouncement.content}
+                  onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
+                ></textarea>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    if (!newAnnouncement.title || !newAnnouncement.content) return toast.error("Please fill in all fields");
+                    addAnnouncement({ ...newAnnouncement, id: Date.now(), date: new Date().toLocaleDateString() });
+                    setNewAnnouncement({ title: "", content: "", type: "Info" });
+                    toast.success("Announcement Posted! 📢");
+                  }}
+                >
+                  Post Now 🚀
+                </button>
+              </div>
+            </div>
+
+            {/* ⚡ Recent Activity Feed */}
+            <div className="card">
+              <h3 style={{ marginBottom: "1rem" }}>⚡ Recent Activity</h3>
+              <div className="activity-feed" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {students.slice(0, 5).map((s, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'start', fontSize: '0.9rem', paddingBottom: '0.75rem', borderBottom: i < 4 ? '1px solid var(--color-border)' : 'none' }}>
+                    <div style={{ marginTop: '0.25rem', width: '8px', height: '8px', borderRadius: '50%', background: i % 2 === 0 ? 'var(--color-success)' : 'var(--color-primary)' }}></div>
+                    <div>
+                      <div>
+                        <span style={{ fontWeight: '600' }}>{s.name}</span>
+                        <span style={{ color: 'var(--color-text-secondary)' }}> {i % 2 === 0 ? 'completed a session' : 'joined a program'}</span>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.2rem' }}>{Math.floor(Math.random() * 24) + 1}h ago</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="card">
               <h3 style={{ marginBottom: "1rem" }}>Student Engagement</h3>
               <ActivityChart data={activityData} />
@@ -912,7 +1011,7 @@ const AdminDashboard = ({ students, setStudents, updateStudentData, resources, a
                                       <div style={{ display: "flex", gap: "0.5rem" }}>
                                         <button
                                           className="btn btn-sm btn-success"
-                                          onClick={() => updateAppointmentStatus(appt.id, "Confirmed", "Approved by Admin")}
+                                          onClick={() => updateAppointmentStatus(appt.id, "Confirmed", "Approved by Admin", user?.name || "Admin")}
                                         >
                                           ✅
                                         </button>
@@ -926,9 +1025,29 @@ const AdminDashboard = ({ students, setStudents, updateStudentData, resources, a
                                         >
                                           ❌
                                         </button>
+                                        <button
+                                          className="btn btn-sm btn-outline"
+                                          onClick={() => {
+                                            setSelectedAppointment(appt);
+                                            setAppointmentAction("Reschedule");
+                                            setAppointmentNote("");
+                                            setRescheduleDate("");
+                                          }}
+                                        >
+                                          🗓️
+                                        </button>
                                       </div>
                                     )}
-                                    {appt.status !== "Pending" && <span style={{ color: "var(--color-text-secondary)", fontSize: "0.9rem" }}>{appt.notes}</span>}
+                                    {appt.status !== "Pending" && (
+                                      <div style={{ fontSize: "0.85rem" }}>
+                                        <div style={{ color: "var(--color-text-secondary)" }}>{appt.notes}</div>
+                                        {appt.assignedTo && (
+                                          <div style={{ color: "var(--color-primary)", fontWeight: "500", marginTop: "0.25rem" }}>
+                                            👤 Assigned to: {appt.assignedTo}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </td>
                                 </tr>
                               ))
@@ -949,13 +1068,26 @@ const AdminDashboard = ({ students, setStudents, updateStudentData, resources, a
                           <div className="modal-content">
                             <h3>{appointmentAction} Appointment</h3>
                             <p>For: {selectedAppointment.studentName} - {selectedAppointment.type}</p>
+
+                            {appointmentAction === "Reschedule" && (
+                              <div className="form-group">
+                                <label>New Date & Time</label>
+                                <input
+                                  type="datetime-local"
+                                  className="form-control"
+                                  value={rescheduleDate}
+                                  onChange={(e) => setRescheduleDate(e.target.value)}
+                                />
+                              </div>
+                            )}
+
                             <div className="form-group">
                               <label>Reason / Note</label>
                               <textarea
                                 className="form-control"
                                 value={appointmentNote}
                                 onChange={(e) => setAppointmentNote(e.target.value)}
-                                placeholder="Enter reason for rejection or new schedule details..."
+                                placeholder={appointmentAction === "Reschedule" ? "Reason for rescheduling..." : "Enter reason for rejection..."}
                               />
                             </div>
                             <div className="modal-actions">
@@ -963,9 +1095,19 @@ const AdminDashboard = ({ students, setStudents, updateStudentData, resources, a
                               <button
                                 className="btn btn-primary"
                                 onClick={() => {
-                                  updateAppointmentStatus(selectedAppointment.id, appointmentAction === "Reject" ? "Rejected" : "Rescheduled", appointmentNote);
+                                  if (appointmentAction === "Reschedule" && !rescheduleDate) {
+                                    toast.error("Please select a new date");
+                                    return;
+                                  }
+                                  updateAppointmentStatus(
+                                    selectedAppointment.id,
+                                    appointmentAction === "Reject" ? "Rejected" : "Rescheduled",
+                                    appointmentNote,
+                                    null,
+                                    appointmentAction === "Reschedule" ? rescheduleDate : null
+                                  );
                                   setSelectedAppointment(null);
-                                  toast.success(`Appointment ${appointmentAction}ed`);
+                                  toast.success(`Appointment ${appointmentAction}d`);
                                 }}
                               >
                                 Confirm {appointmentAction}
@@ -981,8 +1123,8 @@ const AdminDashboard = ({ students, setStudents, updateStudentData, resources, a
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

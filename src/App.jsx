@@ -403,7 +403,9 @@ function App() {
 
   // ✅ Announcement Management Functions
   const addAnnouncement = (newAnnouncement) => {
-    setAnnouncements((prev) => [{ ...newAnnouncement, id: Date.now(), date: new Date().toLocaleDateString() }, ...prev]);
+    const announcementWithMeta = { ...newAnnouncement, id: Date.now(), date: new Date().toLocaleDateString() };
+    setAnnouncements((prev) => [announcementWithMeta, ...prev]);
+    addNotification(`📢 New Announcement: ${newAnnouncement.title}`);
   };
 
   const deleteAnnouncement = (id) => {
@@ -432,8 +434,22 @@ function App() {
     setAppointments((prev) => [...prev, { ...appointment, id: Date.now(), status: "Pending" }]);
   };
 
-  const updateAppointmentStatus = (id, status, note) => {
-    setAppointments(prev => prev.map(appt => appt.id === id ? { ...appt, status, notes: note } : appt));
+  const updateAppointmentStatus = (id, status, note, assignedTo = null, newDate = null) => {
+    setAppointments(prev => prev.map(appt => appt.id === id ? { ...appt, status, notes: note, assignedTo, date: newDate || appt.date } : appt));
+
+    // 🔔 Trigger Notification
+    const appt = appointments.find(a => a.id === id);
+    if (appt) {
+      let message = "";
+      if (status === "Confirmed") {
+        message = `Your appointment for ${appt.type} has been approved! ✅`;
+      } else if (status === "Rescheduled") {
+        message = `Your appointment has been rescheduled to ${newDate}. 🗓️`;
+      } else {
+        message = `Your appointment request was updated: ${status}`;
+      }
+      addNotification(message);
+    }
   };
 
   // ✅ Analytics State
@@ -594,6 +610,7 @@ function App() {
                   analytics={analytics}
                   appointments={appointments}
                   updateAppointmentStatus={updateAppointmentStatus}
+                  user={user}
                 />
               </Layout>
             ) : (
