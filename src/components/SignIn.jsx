@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const SignIn = ({ onLogin }) => {
+const SignIn = ({ onLogin, trackLogin }) => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -28,9 +28,31 @@ const SignIn = ({ onLogin }) => {
       return;
     }
 
+    // Verify credentials against localStorage
+    const existingUsers = JSON.parse(localStorage.getItem("users") || "[]");
+
+    const user = existingUsers.find(
+      (u) =>
+        ((u.email === formData.emailOrId) ||
+          (u.studentId == formData.emailOrId) ||
+          (u.adminId === formData.emailOrId)) &&
+        u.password === formData.password &&
+        u.role === formData.loginAs
+    );
+
+    if (!user) {
+      alert("Invalid credentials! Please check your email/ID and password.");
+      return;
+    }
+
     // Call onLogin if provided (optional)
     if (onLogin) {
       onLogin(formData.emailOrId, formData.password, formData.loginAs);
+    }
+
+    // Track login for analytics
+    if (trackLogin) {
+      trackLogin();
     }
 
     // Navigate based on login type

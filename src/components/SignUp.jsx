@@ -1,14 +1,28 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
-const SignUp = ({ onSignUp, onNavigate }) => {
+const SignUp = ({ onSignUp }) => {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     accountType: "Student Account",
+    // Common Fields
     fullName: "",
-    studentId: "",
-    email: "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
+    // Student Fields
+    age: "",
+    gender: "",
+    department: "",
+    year: "",
+    email: "",
+    phone: "",
+    // Admin Fields
+    adminId: "",
+    designation: "",
+    authorizationCode: "",
   });
 
   const handleChange = (e) => {
@@ -22,17 +36,82 @@ const SignUp = ({ onSignUp, onNavigate }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Basic Validation
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
+      toast.error("Passwords do not match!");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters long");
       return;
     }
 
     if (!formData.agreeToTerms) {
-      alert("Please agree to the Terms of Service and Privacy Policy");
+      toast.error("Please agree to the Terms of Service and Privacy Policy");
       return;
     }
 
-    onSignUp(formData);
+    // Admin Authorization Check
+    if (formData.accountType === "Admin Account" && formData.authorizationCode !== "ADMIN123") {
+      toast.error("Invalid Authorization Code!");
+      return;
+    }
+
+    setIsLoading(true);
+
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
+
+      // Construct User Object based on Role
+      let newUser = {
+        name: formData.fullName,
+        password: formData.password,
+        role: formData.accountType === "Admin Account" ? "Admin" : "Student",
+      };
+
+      if (formData.accountType === "Student Account") {
+        newUser = {
+          ...newUser,
+          email: formData.email,
+          age: formData.age,
+          gender: formData.gender,
+          department: formData.department,
+          year: formData.year,
+          phone: formData.phone,
+          studentId: "S" + Math.floor(Math.random() * 10000), // Generate random ID
+        };
+      } else {
+        newUser = {
+          ...newUser,
+          email: formData.adminId, // Use Admin ID as primary identifier
+          adminId: formData.adminId,
+          designation: formData.designation,
+        };
+      }
+
+      // Save to localStorage
+      const existingUsers = JSON.parse(localStorage.getItem("users") || "[]");
+
+      // Check for duplicates
+      const identifier = formData.accountType === "Student Account" ? formData.email : formData.adminId;
+      if (existingUsers.find(u => u.email === identifier || u.adminId === identifier)) {
+        toast.error("User already registered!");
+        return;
+      }
+
+      existingUsers.push(newUser);
+      localStorage.setItem("users", JSON.stringify(existingUsers));
+
+      toast.success("Account created successfully! Please sign in.");
+
+      if (onSignUp) {
+        onSignUp(formData);
+      }
+
+      navigate("/signin");
+    }, 1500);
   };
 
   return (
@@ -40,25 +119,15 @@ const SignUp = ({ onSignUp, onNavigate }) => {
       <div className="auth-container">
         {/* Left Info Section */}
         <div className="auth-left">
-          <button className="back-button" onClick={() => onNavigate("home")}>
+          <button className="btn btn-ghost back-btn" onClick={() => navigate("/")}>
             ← Back to Home
           </button>
 
           <div className="auth-branding">
             <div className="logo-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M9 12L11 14L15 10"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" />
+                <path d="M9 12L11 14L15 10" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
             <h1 className="brand-name">WellnessHub</h1>
@@ -67,7 +136,7 @@ const SignUp = ({ onSignUp, onNavigate }) => {
 
           <div className="community-info">
             <h2>Join Our Community</h2>
-            <p>
+            <p style={{ color: 'rgba(255,255,255,0.9)' }}>
               Start your wellness journey with comprehensive health resources,
               fitness programs, and mental health support designed specifically
               for students.
@@ -75,55 +144,16 @@ const SignUp = ({ onSignUp, onNavigate }) => {
 
             <div className="feature-list">
               <div className="feature-item">
-                <div
-                  className="feature-dot"
-                  style={{ backgroundColor: "#34D399" }}
-                ></div>
+                <div className="feature-dot" style={{ backgroundColor: "#34D399" }}></div>
                 <span>24/7 Mental Health Support</span>
               </div>
               <div className="feature-item">
-                <div
-                  className="feature-dot"
-                  style={{ backgroundColor: "#60A5FA" }}
-                ></div>
+                <div className="feature-dot" style={{ backgroundColor: "#60A5FA" }}></div>
                 <span>Personalized Fitness Programs</span>
               </div>
               <div className="feature-item">
-                <div
-                  className="feature-dot"
-                  style={{ backgroundColor: "#F87171" }}
-                ></div>
+                <div className="feature-dot" style={{ backgroundColor: "#F87171" }}></div>
                 <span>Expert Nutrition Guidance</span>
-              </div>
-            </div>
-
-            <div className="community-image">
-              <div className="verified-badge">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path
-                    d="M9 12L11 14L15 10"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <span>Verified Safe</span>
-              </div>
-              <img
-                src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop"
-                alt="Wellness community"
-              />
-              <div className="member-count">
-                <div className="member-icon">👥</div>
-                <div>
-                  <div className="member-number">10,000+</div>
-                  <div className="member-label">Active Members</div>
-                </div>
               </div>
             </div>
           </div>
@@ -131,9 +161,11 @@ const SignUp = ({ onSignUp, onNavigate }) => {
 
         {/* Right Form Section */}
         <div className="auth-right">
-          <div className="auth-form-container">
+          <div className="auth-form-container" style={{ maxWidth: '500px' }}>
             <h2>Create Account</h2>
-            <div className="trust-badge">⭐⭐⭐⭐⭐ Trusted by 10,000+ students</div>
+            <div className="trust-badge" style={{ marginBottom: '1.5rem', fontSize: '0.9rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ color: '#F59E0B' }}>⭐⭐⭐⭐⭐</span> Trusted by 10,000+ students
+            </div>
 
             <form onSubmit={handleSubmit} className="auth-form">
               {/* Account Type */}
@@ -148,13 +180,9 @@ const SignUp = ({ onSignUp, onNavigate }) => {
                   <option value="Student Account">Student Account</option>
                   <option value="Admin Account">Admin Account</option>
                 </select>
-                <p className="form-help-text">
-                  Access wellness programs, health resources, and track your
-                  progress
-                </p>
               </div>
 
-              {/* Full Name */}
+              {/* Common Fields */}
               <div className="form-group">
                 <label className="form-label">Full Name</label>
                 <input
@@ -168,37 +196,141 @@ const SignUp = ({ onSignUp, onNavigate }) => {
                 />
               </div>
 
-              {/* Student ID - only for Student Account */}
+              {/* Student Specific Fields */}
               {formData.accountType === "Student Account" && (
-                <div className="form-group">
-                  <label className="form-label">Student ID</label>
-                  <input
-                    type="text"
-                    name="studentId"
-                    value={formData.studentId}
-                    onChange={handleChange}
-                    placeholder="Enter your student ID"
-                    className="form-control"
-                    required
-                  />
-                </div>
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div className="form-group">
+                      <label className="form-label">Age</label>
+                      <input
+                        type="number"
+                        name="age"
+                        value={formData.age}
+                        onChange={handleChange}
+                        placeholder="Age"
+                        className="form-control"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Gender</label>
+                      <select
+                        name="gender"
+                        value={formData.gender}
+                        onChange={handleChange}
+                        className="form-control"
+                        required
+                      >
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div className="form-group">
+                      <label className="form-label">Department</label>
+                      <input
+                        type="text"
+                        name="department"
+                        value={formData.department}
+                        onChange={handleChange}
+                        placeholder="Dept (e.g. CSE)"
+                        className="form-control"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Year</label>
+                      <select
+                        name="year"
+                        value={formData.year}
+                        onChange={handleChange}
+                        className="form-control"
+                        required
+                      >
+                        <option value="">Select</option>
+                        <option value="1">1st Year</option>
+                        <option value="2">2nd Year</option>
+                        <option value="3">3rd Year</option>
+                        <option value="4">4th Year</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="Enter your email"
+                      className="form-control"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Phone Number</label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder="Enter your phone number"
+                      className="form-control"
+                      required
+                    />
+                  </div>
+                </>
               )}
 
-              {/* Email */}
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email address"
-                  className="form-control"
-                  required
-                />
-              </div>
+              {/* Admin Specific Fields */}
+              {formData.accountType === "Admin Account" && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Admin ID</label>
+                    <input
+                      type="text"
+                      name="adminId"
+                      value={formData.adminId}
+                      onChange={handleChange}
+                      placeholder="Enter Admin ID"
+                      className="form-control"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Designation</label>
+                    <input
+                      type="text"
+                      name="designation"
+                      value={formData.designation}
+                      onChange={handleChange}
+                      placeholder="e.g. Counselor, Faculty"
+                      className="form-control"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Authorization Code</label>
+                    <input
+                      type="password"
+                      name="authorizationCode"
+                      value={formData.authorizationCode}
+                      onChange={handleChange}
+                      placeholder="Enter Auth Code (Hint: ADMIN123)"
+                      className="form-control"
+                      required
+                    />
+                  </div>
+                </>
+              )}
 
-              {/* Password */}
+              {/* Password Fields */}
               <div className="form-group">
                 <label className="form-label">Password</label>
                 <input
@@ -212,7 +344,6 @@ const SignUp = ({ onSignUp, onNavigate }) => {
                 />
               </div>
 
-              {/* Confirm Password */}
               <div className="form-group">
                 <label className="form-label">Confirm Password</label>
                 <input
@@ -227,7 +358,7 @@ const SignUp = ({ onSignUp, onNavigate }) => {
               </div>
 
               {/* Terms Agreement */}
-              <div className="form-checkbox">
+              <div className="form-checkbox" style={{ marginBottom: '1.5rem' }}>
                 <input
                   type="checkbox"
                   name="agreeToTerms"
@@ -236,22 +367,33 @@ const SignUp = ({ onSignUp, onNavigate }) => {
                   id="terms"
                   required
                 />
-                <label htmlFor="terms">
-                  I agree to the <a href="#terms">Terms of Service</a> and{" "}
-                  <a href="#privacy">Privacy Policy</a>
+                <label htmlFor="terms" style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
+                  I agree to the <a href="#terms" style={{ color: 'var(--color-primary)' }}>Terms of Service</a> and{" "}
+                  <a href="#privacy" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>
                 </label>
               </div>
 
               {/* Submit Button */}
-              <button type="submit" className="btn btn-primary btn-full-width">
-                Create Account
+              <button
+                type="submit"
+                className="btn btn-primary btn-full-width"
+                disabled={isLoading}
+              >
+                {isLoading ? "Creating Account..." : "Create Account"}
               </button>
 
               <div className="auth-footer">
                 Already have an account?{" "}
-                <a href="#" onClick={() => onNavigate("signin")}>
+                <span
+                  onClick={() => navigate("/signin")}
+                  style={{
+                    color: "var(--color-primary)",
+                    cursor: "pointer",
+                    fontWeight: "600"
+                  }}
+                >
                   Sign in
-                </a>
+                </span>
               </div>
             </form>
           </div>

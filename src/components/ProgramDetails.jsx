@@ -1,44 +1,37 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
-const programInfo = {
-  "mental-health": {
-    title: "Mental Health Support",
-    desc: "Access 24/7 counseling sessions with certified professionals. Our trained counselors help manage stress, anxiety, and emotional well-being.",
-    img: "https://images.unsplash.com/photo-1588776814546-6d4f9b4ef7b0?w=800",
-  },
-  "fitness-programs": {
-    title: "Fitness Programs",
-    desc: "Join yoga, HIIT, and cardio sessions to stay fit. Get personalized routines and weekly progress tracking with expert trainers.",
-    img: "https://images.unsplash.com/photo-1554284126-aa88f22d8b74?w=800",
-  },
-  "nutrition-guidance": {
-    title: "Nutrition Guidance",
-    desc: "Follow customized diet plans, track calories, and improve your energy levels with our nutritionist-backed health guides.",
-    img: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800",
-  },
-  "community-support": {
-    title: "Community Support",
-    desc: "Connect with peers, share experiences, and stay motivated in your wellness journey through our active community network.",
-    img: "https://images.unsplash.com/photo-1515169067865-5387ec356754?w=800",
-  },
-  "daily-challenges": {
-    title: "Daily Challenges",
-    desc: "Stay motivated with daily wellness challenges like hydration tracking, meditation, and fitness goals.",
-    img: "https://images.unsplash.com/photo-1558611848-73f7eb4001a1?w=800",
-  },
-};
-
-const ProgramDetails = () => {
+const ProgramDetails = ({ user, studentData, enrollInProgram, leaveProgram, programs }) => {
   const { programId } = useParams();
   const navigate = useNavigate();
-  const data = programInfo[programId];
 
-  if (!data) {
+  // Find program from the passed programs prop
+  const data = programs?.find(p => p.id === programId);
+
+  // Map old data structure if needed, or ensure new structure has all fields.
+  // The new structure in App.jsx has: title, detailedDescription (as desc), img, duration, level.
+  // We need to make sure 'desc' in this component maps to 'detailedDescription' or 'description'.
+  // Let's normalize it here for the view.
+  const displayData = data ? {
+    ...data,
+    desc: data.detailedDescription || data.description, // Fallback to short desc if detailed is missing
+  } : null;
+
+  const handleStartProgram = () => {
+    toast.success(`Successfully enrolled in ${displayData.title}! 🚀`);
+    // In a real app, this would update the backend
+  };
+
+  if (!displayData) {
     return (
-      <div className="page-wrapper">
+      <div className="page-wrapper center">
         <h1>Program Not Found 😢</h1>
-        <button className="btn btn-outline" onClick={() => navigate(-1)}>
+        <button
+          className="btn btn-outline"
+          onClick={() => navigate(-1)}
+          aria-label="Go back to previous page"
+        >
           ← Go Back
         </button>
       </div>
@@ -47,18 +40,81 @@ const ProgramDetails = () => {
 
   return (
     <div className="page-wrapper">
-      <div className="page-header">
-        <h1>{data.title}</h1>
-        <p>{data.desc}</p>
-      </div>
-
-      <div className="detail-image">
-        <img src={data.img} alt={data.title} />
-      </div>
-
-      <button className="btn btn-primary" onClick={() => navigate(-1)}>
-        ← Back to Dashboard
+      <button
+        className="btn btn-outline"
+        onClick={() => navigate(-1)}
+        style={{ marginBottom: "1rem" }}
+        aria-label="Go back to dashboard"
+      >
+        ← Back
       </button>
+
+      <div className="program-card">
+        <div className="detail-image">
+          <img
+            src={displayData.img}
+            alt={displayData.title}
+          />
+        </div>
+
+        <div className="program-content">
+          <h1 className="program-title">{displayData.title}</h1>
+
+          <div className="program-meta">
+            <span className="badge badge-blue">
+              ⏱ {displayData.duration}
+            </span>
+            <span className="badge badge-green">
+              📊 {displayData.level}
+            </span>
+          </div>
+
+          <p className="program-desc">
+            {displayData.desc}
+          </p>
+
+          <div className="action-buttons-lg">
+            {studentData?.enrolledPrograms?.includes(programId) ? (
+              <button
+                className="btn btn-outline btn-lg"
+                onClick={() => {
+                  if (window.confirm("Are you sure you want to leave this program?")) {
+                    leaveProgram(studentData.id, programId);
+                    toast.success(`You have left ${displayData.title}.`);
+                  }
+                }}
+                style={{ borderColor: 'var(--color-text-secondary)', color: 'var(--color-text-secondary)' }}
+                aria-label={`Leave ${displayData.title} program`}
+              >
+                Enrolled (Leave)
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary btn-lg"
+                onClick={() => {
+                  if (user?.role === "Student") {
+                    enrollInProgram(studentData.id, programId);
+                    toast.success(`Successfully enrolled in ${displayData.title}! 🚀`);
+                  } else {
+                    toast.error("Please sign in to enroll.");
+                    navigate("/signin");
+                  }
+                }}
+                aria-label={`Start ${displayData.title} program`}
+              >
+                Start Program 🚀
+              </button>
+            )}
+            <button
+              className="btn btn-outline"
+              onClick={() => toast("Added to your wishlist! ❤️")}
+              aria-label={`Add ${displayData.title} to wishlist`}
+            >
+              Save for Later
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
