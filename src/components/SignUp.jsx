@@ -1,401 +1,98 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
 
-const SignUp = ({ onSignUp }) => {
+const SignUp = ({ onGoogleLogin }) => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    accountType: "Student Account",
-    // Common Fields
-    fullName: "",
-    password: "",
-    confirmPassword: "",
-    agreeToTerms: false,
-    // Student Fields
-    age: "",
-    gender: "",
-    department: "",
-    year: "",
-    email: "",
-    phone: "",
-    // Admin Fields
-    adminId: "",
-    designation: "",
-    authorizationCode: "",
-  });
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    // Basic Validation
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match!");
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast.error("Password must be at least 6 characters long");
-      return;
-    }
-
-    if (!formData.agreeToTerms) {
-      toast.error("Please agree to the Terms of Service and Privacy Policy");
-      return;
-    }
-
-    // Admin Authorization Check
-    if (formData.accountType === "Admin Account" && formData.authorizationCode !== "ADMIN123") {
-      toast.error("Invalid Authorization Code!");
-      return;
-    }
-
-    setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-
-      // Construct User Object based on Role
-      let newUser = {
-        name: formData.fullName,
-        password: formData.password,
-        role: formData.accountType === "Admin Account" ? "Admin" : "Student",
-      };
-
-      if (formData.accountType === "Student Account") {
-        newUser = {
-          ...newUser,
-          email: formData.email,
-          age: formData.age,
-          gender: formData.gender,
-          department: formData.department,
-          year: formData.year,
-          phone: formData.phone,
-          studentId: "S" + Math.floor(Math.random() * 10000), // Generate random ID
-        };
-      } else {
-        newUser = {
-          ...newUser,
-          email: formData.adminId, // Use Admin ID as primary identifier
-          adminId: formData.adminId,
-          designation: formData.designation,
-        };
-      }
-
-      // Save to localStorage
-      const existingUsers = JSON.parse(localStorage.getItem("users") || "[]");
-
-      // Check for duplicates
-      const identifier = formData.accountType === "Student Account" ? formData.email : formData.adminId;
-      if (existingUsers.find(u => u.email === identifier || u.adminId === identifier)) {
-        toast.error("User already registered!");
-        return;
-      }
-
-      existingUsers.push(newUser);
-      localStorage.setItem("users", JSON.stringify(existingUsers));
-
-      toast.success("Account created successfully! Please sign in.");
-
-      if (onSignUp) {
-        onSignUp(formData);
-      }
-
-      navigate("/signin");
-    }, 1500);
-  };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        {/* Left Info Section */}
-        <div className="auth-left">
-          <button className="btn btn-ghost back-btn" onClick={() => navigate("/")}>
-            ← Back to Home
-          </button>
-
-          <div className="auth-branding">
-            <div className="logo-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" />
-                <path d="M9 12L11 14L15 10" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+    <div className="auth-page-premium fade-in">
+      <div className="auth-container-premium">
+        {/* LEFT SIDE - Branding */}
+        <div className="auth-left-premium">
+          <div>
+            <div className="brand-logo-premium" onClick={() => navigate("/")} style={{ cursor: 'pointer' }}>
+              <div className="logo-icon-premium">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" />
+                  <path d="M9 12L11 14L15 10" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h1 style={{ fontSize: '1.8rem', margin: 0, color: 'white' }}>WellnessHub</h1>
             </div>
-            <h1 className="brand-name">WellnessHub</h1>
-            <p className="brand-tagline">Your wellness journey starts here</p>
-          </div>
 
-          <div className="community-info">
-            <h2>Join Our Community</h2>
-            <p style={{ color: 'rgba(255,255,255,0.9)' }}>
-              Start your wellness journey with comprehensive health resources,
-              fitness programs, and mental health support designed specifically
-              for students.
+            <h2 style={{ fontSize: '2.5rem', marginBottom: '1.5rem', color: 'white' }}>
+              Join the Community
+            </h2>
+            <p style={{ fontSize: '1.1rem', opacity: 0.9, lineHeight: 1.6 }}>
+              Start your wellness journey today. Get access to exclusive resources, expert guidance, and a supportive network of peers.
             </p>
 
-            <div className="feature-list">
-              <div className="feature-item">
-                <div className="feature-dot" style={{ backgroundColor: "#34D399" }}></div>
-                <span>24/7 Mental Health Support</span>
+            <div className="feature-list-premium">
+              <div className="feature-item-premium">
+                <div className="feature-icon-premium">✨</div>
+                <span>Personalized Plans</span>
               </div>
-              <div className="feature-item">
-                <div className="feature-dot" style={{ backgroundColor: "#60A5FA" }}></div>
-                <span>Personalized Fitness Programs</span>
-              </div>
-              <div className="feature-item">
-                <div className="feature-dot" style={{ backgroundColor: "#F87171" }}></div>
-                <span>Expert Nutrition Guidance</span>
+              <div className="feature-item-premium">
+                <div className="feature-icon-premium">🔒</div>
+                <span>One-Click Access</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Form Section */}
-        <div className="auth-right">
-          <div className="auth-form-container" style={{ maxWidth: '500px' }}>
-            <h2>Create Account</h2>
-            <div className="trust-badge" style={{ marginBottom: '1.5rem', fontSize: '0.9rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ color: '#F59E0B' }}>⭐⭐⭐⭐⭐</span> Trusted by 10,000+ students
+        {/* RIGHT SIDE - Form */}
+        <div className="auth-right-premium">
+          <div className="auth-form-wrapper" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <h2 className="auth-title">Create Account</h2>
+            <p className="auth-subtitle">Join us instantly with your Google account.</p>
+
+            <div style={{ padding: '2rem 0' }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const user = await onGoogleLogin();
+                    if (user) {
+                      if (user.role === "Admin") {
+                        navigate("/admin-dashboard");
+                      } else {
+                        navigate("/student-dashboard");
+                      }
+                    }
+                  } catch (e) {
+                    console.error("Sign up failed", e);
+                  }
+                }}
+                className="btn btn-outline btn-full-width btn-lg"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1rem',
+                  background: 'white',
+                  color: '#333',
+                  borderColor: '#ddd',
+                  padding: '1rem',
+                  fontSize: '1.1rem',
+                  boxShadow: '0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08)'
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M23.52 12.29C23.52 11.43 23.44 10.61 23.3 9.81H12V14.45H18.45C18.17 15.93 17.33 17.18 16.06 18.02V21.01H19.96C22.24 18.9 23.52 15.82 23.52 12.29Z" fill="#4285F4" />
+                  <path d="M12 24C15.24 24 17.96 22.92 19.96 21.01L16.06 18.02C14.98 18.74 13.6 19.16 12 19.16C8.87 19.16 6.22 17.05 5.27 14.19H1.24V17.31C3.25 21.3 7.37 24 12 24Z" fill="#34A853" />
+                  <path d="M5.27 14.19C5.03 13.33 4.9 12.43 4.9 11.5C4.9 10.57 5.03 9.67 5.27 8.81V5.69H1.24C0.45 7.27 0 9.06 0 11.5C0 13.94 0.45 15.73 1.24 17.31L5.27 14.19Z" fill="#FBBC05" />
+                  <path d="M12 4.84C13.76 4.84 15.34 5.45 16.58 6.63L20.04 3.17C17.96 1.23 15.24 0 12 0C7.37 0 3.25 2.7 1.24 6.69L5.27 9.81C6.22 6.95 8.87 4.84 12 4.84Z" fill="#EA4335" />
+                </svg>
+                Sign up with Google
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="auth-form">
-              {/* Account Type */}
-              <div className="form-group">
-                <label className="form-label">Account Type</label>
-                <select
-                  name="accountType"
-                  value={formData.accountType}
-                  onChange={handleChange}
-                  className="form-control"
-                >
-                  <option value="Student Account">Student Account</option>
-                  <option value="Admin Account">Admin Account</option>
-                </select>
-              </div>
-
-              {/* Common Fields */}
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  placeholder="Enter your full name"
-                  className="form-control"
-                  required
-                />
-              </div>
-
-              {/* Student Specific Fields */}
-              {formData.accountType === "Student Account" && (
-                <>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                    <div className="form-group">
-                      <label className="form-label">Age</label>
-                      <input
-                        type="number"
-                        name="age"
-                        value={formData.age}
-                        onChange={handleChange}
-                        placeholder="Age"
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Gender</label>
-                      <select
-                        name="gender"
-                        value={formData.gender}
-                        onChange={handleChange}
-                        className="form-control"
-                        required
-                      >
-                        <option value="">Select</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                    <div className="form-group">
-                      <label className="form-label">Department</label>
-                      <input
-                        type="text"
-                        name="department"
-                        value={formData.department}
-                        onChange={handleChange}
-                        placeholder="Dept (e.g. CSE)"
-                        className="form-control"
-                        required
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Year</label>
-                      <select
-                        name="year"
-                        value={formData.year}
-                        onChange={handleChange}
-                        className="form-control"
-                        required
-                      >
-                        <option value="">Select</option>
-                        <option value="1">1st Year</option>
-                        <option value="2">2nd Year</option>
-                        <option value="3">3rd Year</option>
-                        <option value="4">4th Year</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="Enter your email"
-                      className="form-control"
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Phone Number</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="Enter your phone number"
-                      className="form-control"
-                      required
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Admin Specific Fields */}
-              {formData.accountType === "Admin Account" && (
-                <>
-                  <div className="form-group">
-                    <label className="form-label">Admin ID</label>
-                    <input
-                      type="text"
-                      name="adminId"
-                      value={formData.adminId}
-                      onChange={handleChange}
-                      placeholder="Enter Admin ID"
-                      className="form-control"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Designation</label>
-                    <input
-                      type="text"
-                      name="designation"
-                      value={formData.designation}
-                      onChange={handleChange}
-                      placeholder="e.g. Counselor, Faculty"
-                      className="form-control"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Authorization Code</label>
-                    <input
-                      type="password"
-                      name="authorizationCode"
-                      value={formData.authorizationCode}
-                      onChange={handleChange}
-                      placeholder="Enter Auth Code (Hint: ADMIN123)"
-                      className="form-control"
-                      required
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Password Fields */}
-              <div className="form-group">
-                <label className="form-label">Password</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Create a password"
-                  className="form-control"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Confirm Password</label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Confirm your password"
-                  className="form-control"
-                  required
-                />
-              </div>
-
-              {/* Terms Agreement */}
-              <div className="form-checkbox" style={{ marginBottom: '1.5rem' }}>
-                <input
-                  type="checkbox"
-                  name="agreeToTerms"
-                  checked={formData.agreeToTerms}
-                  onChange={handleChange}
-                  id="terms"
-                  required
-                />
-                <label htmlFor="terms" style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
-                  I agree to the <a href="#terms" style={{ color: 'var(--color-primary)' }}>Terms of Service</a> and{" "}
-                  <a href="#privacy" style={{ color: 'var(--color-primary)' }}>Privacy Policy</a>
-                </label>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                className="btn btn-primary btn-full-width"
-                disabled={isLoading}
-              >
-                {isLoading ? "Creating Account..." : "Create Account"}
-              </button>
-
-              <div className="auth-footer">
-                Already have an account?{" "}
-                <span
-                  onClick={() => navigate("/signin")}
-                  style={{
-                    color: "var(--color-primary)",
-                    cursor: "pointer",
-                    fontWeight: "600"
-                  }}
-                >
-                  Sign in
-                </span>
-              </div>
-            </form>
+            <p style={{ marginTop: '2rem', fontSize: '0.95rem', color: 'var(--color-text-secondary)' }}>
+              Already have an account?{' '}
+              <span onClick={() => navigate("/signin")} style={{ color: 'var(--color-primary)', fontWeight: '600', cursor: 'pointer' }}>
+                Sign In
+              </span>
+            </p>
           </div>
         </div>
       </div>
@@ -404,3 +101,4 @@ const SignUp = ({ onSignUp }) => {
 };
 
 export default SignUp;
+

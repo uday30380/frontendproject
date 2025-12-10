@@ -35,7 +35,7 @@ const MyAppointments = ({ appointments = [], user, cancelAppointment }) => {
     };
 
     return (
-        <div className="my-appointments-container">
+        <div className="my-appointments-container glass-panel fade-in">
             <div className="appointments-header">
                 <h1>📅 My Appointments</h1>
                 <p className="appointments-subtitle">Manage your wellness sessions</p>

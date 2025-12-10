@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { mockApi } from "./api/mockApi";
-import { Toaster } from "react-hot-toast";
+import React, { useState, useEffect, Suspense, lazy } from "react";
+import { firebaseApi } from "./api/firebaseApi";
+import toast, { Toaster } from "react-hot-toast";
 import {
   BrowserRouter,
   Routes,
@@ -9,29 +9,39 @@ import {
 } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
-import HomePage from "./components/HomePage";
-import SignIn from "./components/SignIn";
-import SignUp from "./components/SignUp";
-import AdminDashboard from "./components/AdminDashboard";
-import StudentDashboard from "./components/StudentDashboard";
-import WellnessPrograms from "./components/WellnessPrograms";
-import HealthResources from "./components/HealthResources";
-import SupportServices from "./components/SupportServices";
-import About from "./components/About";
-import Contact from "./components/Contact";
-import ProgramDetails from "./components/ProgramDetails";
-import Profile from "./components/Profile";
 import ChatBot from "./components/ChatBot";
-import SavedItems from "./components/SavedItems";
-import MyPrograms from "./components/MyPrograms";
-import AppointmentBooking from "./components/AppointmentBooking";
-import MyAppointments from "./components/MyAppointments";
-
 import "./App.css";
-import "./components-styles.css";
+
+// ⚡ Code Splitting: Lazy Load Components
+const HomePage = lazy(() => import("./components/HomePage"));
+const SignIn = lazy(() => import("./components/SignIn"));
+const SignUp = lazy(() => import("./components/SignUp"));
+const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
+const StudentDashboard = lazy(() => import("./components/StudentDashboard"));
+const WellnessPrograms = lazy(() => import("./components/WellnessPrograms"));
+const HealthResources = lazy(() => import("./components/HealthResources"));
+const SupportServices = lazy(() => import("./components/SupportServices"));
+const About = lazy(() => import("./components/About"));
+const Contact = lazy(() => import("./components/Contact"));
+const ProgramDetails = lazy(() => import("./components/ProgramDetails"));
+const Profile = lazy(() => import("./components/Profile"));
+const SavedItems = lazy(() => import("./components/SavedItems"));
+const MyPrograms = lazy(() => import("./components/MyPrograms"));
+const AppointmentBooking = lazy(() => import("./components/AppointmentBooking"));
+const MyAppointments = lazy(() => import("./components/MyAppointments"));
+
+// Loading Spinner Component
+const PageLoader = () => (
+  <div className="flex justify-center items-center h-screen">
+    <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-blue-600" role="status">
+      <span className="visually-hidden">Loading...</span>
+    </div>
+  </div>
+);
+
 
 // ✅ Layout Wrapper
-const Layout = ({ user, onLogout, theme, toggleTheme, notifications, markAsRead, markAllAsRead, children }) => (
+const Layout = ({ user, onLogout, theme, toggleTheme, notifications, markAsRead, markAllAsRead, onSendMessage, messages, children }) => (
   <>
     <Navbar
       user={user}
@@ -43,7 +53,9 @@ const Layout = ({ user, onLogout, theme, toggleTheme, notifications, markAsRead,
       markAllAsRead={markAllAsRead}
     />
     <Toaster position="top-right" reverseOrder={false} />
-    <ChatBot />
+    <ChatBot onSendMessage={onSendMessage} messages={messages} user={user} />
+    {/* Global Broadcast Alert */}
+    <div id="broadcast-root"></div>
     {children}
   </>
 );
@@ -76,6 +88,8 @@ function App() {
   const [programs, setPrograms] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [analytics, setAnalytics] = useState({
     totalLogins: 0,
     pageViews: 0,
@@ -104,6 +118,51 @@ function App() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
+  // ✅ Polls State
+  const [polls, setPolls] = useState(() => {
+    const storedPolls = localStorage.getItem("pollsData");
+    return storedPolls ? JSON.parse(storedPolls) : [];
+  });
+
+  // ✅ System Settings State (Maintenance, Alerts)
+  const [systemSettings, setSystemSettings] = useState(() => {
+    const stored = localStorage.getItem("systemSettingsData");
+    return stored ? JSON.parse(stored) : {
+      maintenanceMode: false,
+      broadcastMessage: "",
+    };
+  });
+
+  // ✅ Update Local Storage for Polls
+  useEffect(() => {
+    localStorage.setItem("pollsData", JSON.stringify(polls));
+  }, [polls]);
+
+  // ✅ Update Local Storage for System Settings
+  useEffect(() => {
+    localStorage.setItem("systemSettingsData", JSON.stringify(systemSettings));
+  }, [systemSettings]);
+
+
+
+  // ✅ Tracking Functions (Memoized)
+  const trackLogin = React.useCallback(() => {
+    setAnalytics((prev) => ({ ...prev, totalLogins: prev.totalLogins + 1 }));
+  }, []);
+
+  const trackPageView = React.useCallback(() => {
+    setAnalytics((prev) => ({ ...prev, pageViews: prev.pageViews + 1 }));
+  }, []);
+
+  const trackResourceView = React.useCallback((resourceId) => {
+    setAnalytics((prev) => ({
+      ...prev,
+      resourceViews: {
+        ...prev.resourceViews,
+        [resourceId]: (prev.resourceViews[resourceId] || 0) + 1,
+      },
+    }));
+  }, []);
 
 
   // ✅ Initial Data Fetching (Simulating API Call)
@@ -116,12 +175,44 @@ function App() {
         // For this demo, we'll prefer the "API" to show the loading state on refresh
         // But we can merge with local storage if needed.
 
-        const data = await mockApi.fetchAllData();
+        // Safety timeout in case API hangs indefinitely
+        const safetyTimeout = new Promise(resolve => setTimeout(() => resolve({
+          students: [], resources: [], programs: [], announcements: [], appointments: [], messages: [], transactions: []
+        }), 8000));
+
+        const data = await Promise.race([
+          firebaseApi.fetchAllData(),
+          safetyTimeout
+        ]);
 
         // Restore from local storage if available, otherwise use API defaults
         // This ensures our edits persist, but we still get the "loading" experience
         const storedStudents = localStorage.getItem("studentsData");
-        setStudents(storedStudents ? JSON.parse(storedStudents) : data.students);
+        let initialStudents = storedStudents ? JSON.parse(storedStudents) : data.students;
+
+        // 🔄 Merge with Registered Users (from SignUp)
+        const registeredUsers = JSON.parse(localStorage.getItem("users") || "[]");
+        const newStudents = registeredUsers
+          .filter(u => u.role === "Student" && !initialStudents.find(s => s.id === u.studentId))
+          .map(u => ({
+            id: u.studentId,
+            name: u.name,
+            department: u.department || "General",
+            year: u.year || "1st Year",
+            email: u.email,
+            riskLevel: "Low", // Default
+            wellnessScore: 100, // Default
+            bmi: "N/A",
+            activity: "Active",
+            sleep: "8",
+            stress: 0,
+            sessions: 0,
+            messages: [],
+            notes: ["Newly registered student"]
+          }));
+
+        const allStudents = [...initialStudents, ...newStudents];
+        setStudents(allStudents);
 
         const storedResources = localStorage.getItem("resourcesData");
         setResources(storedResources ? JSON.parse(storedResources) : data.resources);
@@ -130,14 +221,25 @@ function App() {
         setPrograms(storedPrograms ? JSON.parse(storedPrograms) : data.programs);
 
         const storedAnnouncements = localStorage.getItem("announcementsData");
+        setTransactions(data.transactions || []);
         setAnnouncements(storedAnnouncements ? JSON.parse(storedAnnouncements) : data.announcements);
 
         const storedAppointments = localStorage.getItem("appointmentsData");
         setAppointments(storedAppointments ? JSON.parse(storedAppointments) : data.appointments);
 
+        const storedMessages = localStorage.getItem("messagesData");
+        setMessages(storedMessages ? JSON.parse(storedMessages) : data.messages || []);
+
+
         // Analytics & Notifications (Local only for now)
         const storedAnalytics = localStorage.getItem("analyticsData");
         if (storedAnalytics) setAnalytics(JSON.parse(storedAnalytics));
+
+        const storedPolls = localStorage.getItem("pollsData");
+        setPolls(storedPolls ? JSON.parse(storedPolls) : []);
+
+        const storedSystemSettings = localStorage.getItem("systemSettingsData");
+        if (storedSystemSettings) setSystemSettings(JSON.parse(storedSystemSettings));
 
       } catch (err) {
         console.error("API Error:", err);
@@ -149,6 +251,23 @@ function App() {
 
     loadData();
   }, []);
+
+  // ✅ Fetch Individual Student Data if missing (e.g. after fresh login)
+  useEffect(() => {
+    const fetchSelf = async () => {
+      if (user?.role === "Student" && !students.find(s => s.id === user.uid)) {
+        try {
+          const myData = await firebaseApi.getStudent(user.uid);
+          if (myData) {
+            setStudents(prev => [...prev, myData]);
+          }
+        } catch (e) {
+          console.error("Failed to fetch self data", e);
+        }
+      }
+    };
+    fetchSelf();
+  }, [user, students]);
 
   // ✅ Update Local Storage & Document Attribute for Theme
   useEffect(() => {
@@ -199,51 +318,123 @@ function App() {
     localStorage.setItem("analyticsData", JSON.stringify(analytics));
   }, [analytics]);
 
-  // ✅ Handle Login
-  const handleLogin = (emailOrId, password, role, extraData = {}) => {
-    if (role === "Admin") {
-      // Admin Login
-      const adminUser = {
-        emailOrId,
-        role,
-        name: extraData.name || "Admin User",
-        designation: extraData.designation || "Administrator",
-        studentId: null,
-      };
-      setUser(adminUser);
-      localStorage.setItem("loggedUser", JSON.stringify(adminUser));
-    } else {
-      // Student Login (Existing Logic)
-      const existingUsers = JSON.parse(localStorage.getItem("users") || "[]");
-      const foundUser = existingUsers.find(
-        (u) =>
-          (u.email === emailOrId || u.studentId == emailOrId) &&
-          u.password === password &&
-          u.role === role
-      );
+  // ✅ Update Local Storage for Announcements
+  useEffect(() => {
+    localStorage.setItem("announcementsData", JSON.stringify(announcements));
+  }, [announcements]);
 
-      const loggedUser = foundUser || {
-        emailOrId,
-        role,
-        name: "Student", // Fallback
-        studentId: 101, // Fallback ID
-      };
+  // ✅ Update Local Storage for Appointments
+  useEffect(() => {
+    localStorage.setItem("appointmentsData", JSON.stringify(appointments));
+  }, [appointments]);
+
+  // ✅ Update Local Storage for Messages
+  useEffect(() => {
+    localStorage.setItem("messagesData", JSON.stringify(messages));
+  }, [messages]);
+
+  // ✅ Handle Login
+  // ✅ Handle Login (Firebase)
+  const handleLogin = async (emailOrId, password, role, extraData = {}) => {
+    try {
+      // Note: 'role' is currently passed from the UI form. 
+      // ideally we fetch this from the DB after auth.
+      let loggedUser = null;
+
+      if (role === "Admin" && emailOrId === "admin@example.com" && password === "adminpassword") {
+        // Keep the hardcoded admin for fallback/testing if firebase fails or for specific admin access
+        loggedUser = {
+          email: emailOrId,
+          role,
+          name: extraData.name || "Admin User",
+          designation: extraData.designation || "Administrator",
+          studentId: null,
+        };
+      } else {
+        // Firebase Auth
+        const fbUser = await firebaseApi.login(emailOrId, password);
+        loggedUser = {
+          email: fbUser.email,
+          role: role, // In a real app, fetch this from DB. For now, trust the UI context.
+          name: fbUser.displayName || "Student",
+          uid: fbUser.uid,
+          studentId: fbUser.uid // Using UID as studentID
+        };
+      }
+
       setUser(loggedUser);
       localStorage.setItem("loggedUser", JSON.stringify(loggedUser));
+      toast.success(`Welcome back, ${loggedUser.name}!`);
+    } catch (error) {
+      console.error("Login Error:", error);
+      toast.error("Login Failed: " + error.message);
+    }
+  };
+
+  // ✅ Handle Google Login
+  const handleGoogleLogin = async () => {
+    try {
+      const fbUser = await firebaseApi.loginWithGoogle();
+      // Note: We default to "Student" role for Google Sign-In for simplicity
+      // In a real app, we might check if they are already an Admin in Firestore
+      const loggedUser = {
+        email: fbUser.email,
+        role: fbUser.role || "Student", // Respect role from API
+        name: fbUser.displayName || "User",
+        uid: fbUser.uid,
+        studentId: fbUser.uid
+      };
+
+      setUser(loggedUser);
+      localStorage.setItem("loggedUser", JSON.stringify(loggedUser));
+      toast.success(`Welcome back, ${loggedUser.name}!`);
+      return loggedUser; // Return user for navigation
+    } catch (error) {
+      console.error("Google Login Error:", error);
+      toast.error("Google Login Failed: " + error.message);
+      throw error; // Re-throw for caller to handle
     }
   };
 
   // ✅ Handle Logout
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await firebaseApi.logout();
+    } catch (err) {
+      console.error("Logout Error:", err);
+    }
     setUser(null);
+    localStorage.removeItem("loggedUser");
+    toast.success("Logged out successfully.");
+  };
+
+  // ✅ Update Password Wrapper
+  const updateAppPassword = async (newPassword) => {
+    try {
+      await firebaseApi.updateUserPassword(newPassword);
+      toast.success("Password updated successfully! for next login use this password. 🔐");
+    } catch (error) {
+      console.error("Password Update Error:", error);
+      toast.error("Failed to update password. You may need to re-login explicitly.");
+      throw error;
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="center-content" style={{ height: "100vh", background: "var(--color-background)" }}>
-        <div className="loading-spinner"></div>
-        <h2 style={{ color: "var(--color-primary)" }}>Loading WellnessHub...</h2>
-        <p>Preparing your personalized experience</p>
+      <div className="center-content" style={{ height: "100vh", background: "var(--color-background)", position: 'relative', overflow: 'hidden' }}>
+        {/* Background blobs for visual interest */}
+        <div style={{ position: 'absolute', top: '20%', left: '20%', width: '300px', height: '300px', background: 'var(--color-primary-light)', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.5 }}></div>
+        <div style={{ position: 'absolute', bottom: '20%', right: '20%', width: '300px', height: '300px', background: 'var(--color-accent-light)', borderRadius: '50%', filter: 'blur(80px)', opacity: 0.5 }}></div>
+
+        <div className="glass-panel" style={{ padding: '3rem', borderRadius: 'var(--radius-xl)', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(20px)' }}>
+          <div className="loading-spinner" style={{ width: '60px', height: '60px', border: '4px solid var(--color-primary-light)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+          <div>
+            <h2 style={{ color: "var(--color-text-main)", marginBottom: '0.5rem', fontSize: '1.5rem' }}>WellnessHub</h2>
+            <p style={{ color: "var(--color-text-secondary)", fontSize: '0.9rem' }}>Preparing your experience...</p>
+          </div>
+        </div>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
@@ -251,12 +442,14 @@ function App() {
   if (error) {
     return (
       <div className="center-content" style={{ height: "100vh", background: "var(--color-background)" }}>
-        <div style={{ color: "var(--color-danger)", fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
-        <h2>Something went wrong</h2>
-        <p>{error}</p>
-        <button className="btn btn-primary" onClick={() => window.location.reload()}>
-          Retry
-        </button>
+        <div className="card" style={{ maxWidth: '500px', textAlign: 'center', padding: '3rem' }}>
+          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>⚠️</div>
+          <h2 style={{ marginBottom: '1rem' }}>Connection Issue</h2>
+          <p style={{ marginBottom: '2rem', color: 'var(--color-text-secondary)' }}>{error}</p>
+          <button className="btn btn-primary" onClick={() => window.location.reload()}>
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
@@ -269,44 +462,8 @@ function App() {
     );
   };
 
-  // ✅ Student Updates Their Own Data
-  const updateOwnData = (studentId, updatedFields) => {
-    setStudents((prev) =>
-      prev.map((s) =>
-        s.id === studentId ? { ...s, ...updatedFields } : s
-      )
-    );
-  };
 
-  // ✅ Enroll in Program
-  const enrollInProgram = (studentId, programId) => {
-    setStudents((prev) =>
-      prev.map((s) => {
-        if (s.id === studentId) {
-          const currentEnrolled = s.enrolledPrograms || [];
-          if (!currentEnrolled.includes(programId)) {
-            return { ...s, enrolledPrograms: [...currentEnrolled, programId] };
-          }
-        }
-        return s;
-      })
-    );
-  };
 
-  // ✅ Leave Program
-  const leaveProgram = (studentId, programId) => {
-    setStudents((prev) =>
-      prev.map((s) => {
-        if (s.id === studentId) {
-          return {
-            ...s,
-            enrolledPrograms: (s.enrolledPrograms || []).filter((id) => id !== programId),
-          };
-        }
-        return s;
-      })
-    );
-  };
 
   // ✅ Toggle Saved Resource
   const toggleSaveResource = (studentId, resourceId) => {
@@ -348,29 +505,108 @@ function App() {
   };
 
   // ✅ Resource Management Functions
-  const addResource = (newResource) => {
-    setResources((prev) => [...prev, { ...newResource, id: Date.now() }]);
+  const addResource = async (newResource) => {
+    try {
+      const saved = await firebaseApi.addResource(newResource);
+      setResources((prev) => [...prev, saved]);
+    } catch (e) {
+      console.error("Failed to add resource", e);
+      toast.error("Failed to save resource");
+    }
   };
 
-  const updateResource = (updatedResource) => {
-    setResources((prev) => prev.map((r) => (r.id === updatedResource.id ? updatedResource : r)));
+  const updateResource = async (updatedResource) => {
+    try {
+      await firebaseApi.updateResource(updatedResource);
+      setResources((prev) => prev.map((r) => (r.id === updatedResource.id ? updatedResource : r)));
+    } catch (e) {
+      console.error("Failed to update resource", e);
+      toast.error("Failed to update resource");
+    }
   };
 
-  const deleteResource = (id) => {
-    setResources((prev) => prev.filter((r) => r.id !== id));
+  const deleteResource = async (id) => {
+    try {
+      await firebaseApi.deleteResource(id);
+      setResources((prev) => prev.filter((r) => r.id !== id));
+    } catch (e) {
+      console.error("Failed to delete resource", e);
+      toast.error("Deletion failed");
+    }
   };
 
-  // ✅ Program Management Functions
-  const addProgram = (newProgram) => {
-    setPrograms((prev) => [...prev, { ...newProgram, id: newProgram.id || Date.now().toString() }]);
+  /* --- Program Management --- */
+  const enrollInProgram = async (studentId, programId) => {
+    try {
+      if (!user) return;
+      await firebaseApi.enrollStudentInProgram(studentId, programId);
+
+      // Update local state
+      const updatedStudents = students.map(s => {
+        if (s.id === studentId) {
+          const current = s.enrolledPrograms || [];
+          return { ...s, enrolledPrograms: [...current, programId] };
+        }
+        return s;
+      });
+      setStudents(updatedStudents);
+      toast.success("Enrolled successfully! 🚀");
+    } catch (e) {
+      console.error("Enrollment error", e);
+      toast.error("Failed to enroll");
+    }
   };
 
-  const updateProgram = (updatedProgram) => {
-    setPrograms((prev) => prev.map((p) => (p.id === updatedProgram.id ? updatedProgram : p)));
+  const leaveProgram = async (studentId, programId) => {
+    try {
+      if (!user) return;
+      await firebaseApi.leaveProgram(studentId, programId);
+
+      // Update local state
+      const updatedStudents = students.map(s => {
+        if (s.id === studentId) {
+          const current = s.enrolledPrograms || [];
+          return { ...s, enrolledPrograms: current.filter(id => id !== programId) };
+        }
+        return s;
+      });
+      setStudents(updatedStudents);
+      toast.success("Left program successfully.");
+    } catch (e) {
+      console.error("Leave program error", e);
+      toast.error("Failed to leave program");
+    }
   };
 
-  const deleteProgram = (id) => {
-    setPrograms((prev) => prev.filter((p) => p.id !== id));
+  const addProgram = async (program) => {
+    try {
+      const saved = await firebaseApi.addProgram(program);
+      setPrograms((prev) => [...prev, saved]);
+      toast.success("Program Added 🧘‍♀️");
+    } catch (e) {
+      console.error("Failed to add program", e);
+      toast.error("Failed to add program");
+    }
+  };
+
+  const updateProgram = async (updatedProgram) => {
+    try {
+      await firebaseApi.updateProgram(updatedProgram);
+      setPrograms((prev) => prev.map((p) => (p.id === updatedProgram.id ? updatedProgram : p)));
+    } catch (e) {
+      console.error("Failed to update program", e);
+      toast.error("Failed to update program");
+    }
+  };
+
+  const deleteProgram = async (id) => {
+    try {
+      await firebaseApi.deleteProgram(id);
+      setPrograms((prev) => prev.filter((p) => p.id !== id));
+    } catch (e) {
+      console.error("Failed to delete program", e);
+      toast.error("Deletion failed");
+    }
   };
 
 
@@ -396,20 +632,52 @@ function App() {
   //   ];
   // });
 
-  // ✅ Update Local Storage for Announcements
-  // useEffect(() => {
-  //   localStorage.setItem("announcementsData", JSON.stringify(announcements));
-  // }, [announcements]);
+
 
   // ✅ Announcement Management Functions
-  const addAnnouncement = (newAnnouncement) => {
-    const announcementWithMeta = { ...newAnnouncement, id: Date.now(), date: new Date().toLocaleDateString() };
-    setAnnouncements((prev) => [announcementWithMeta, ...prev]);
-    addNotification(`📢 New Announcement: ${newAnnouncement.title}`);
+  const addAnnouncement = async (newAnnouncement) => {
+    try {
+      const saved = await firebaseApi.addAnnouncement(newAnnouncement);
+      setAnnouncements((prev) => [saved, ...prev]);
+      addNotification(`📢 New Announcement: ${saved.title}`);
+    } catch (e) {
+      console.error("Failed to add announcement", e);
+      toast.error("Failed to add announcement");
+    }
   };
 
-  const deleteAnnouncement = (id) => {
-    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+
+
+  // ✅ Transactions
+  const addTransaction = async (transaction) => {
+    try {
+      const saved = await firebaseApi.addTransaction(transaction);
+      setTransactions(prev => [saved, ...prev]);
+    } catch (e) {
+      console.error("Failed to note transaction", e);
+    }
+  };
+
+  const deleteAnnouncement = async (id) => {
+    try {
+      await firebaseApi.deleteAnnouncement(id);
+      setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+      toast.success("Announcement Deleted 🗑️");
+    } catch (e) {
+      console.error("Failed to delete announcement", e);
+      toast.error("Failed to delete announcement");
+    }
+  };
+
+  const updateAnnouncement = async (announcement) => {
+    try {
+      await firebaseApi.updateAnnouncement(announcement);
+      setAnnouncements((prev) => prev.map((a) => (a.id === announcement.id ? announcement : a)));
+      toast.success("Announcement Updated! 📢");
+    } catch (e) {
+      console.error("Failed to update announcement", e);
+      toast.error("Failed to update announcement");
+    }
   };
 
   // ✅ Appointments State
@@ -426,12 +694,79 @@ function App() {
   //   }
   // });
 
-  // useEffect(() => {
-  //   localStorage.setItem("appointmentsData", JSON.stringify(appointments));
-  // }, [appointments]);
 
-  const addAppointment = (appointment) => {
-    setAppointments((prev) => [...prev, { ...appointment, id: Date.now(), status: "Pending" }]);
+
+  const addAppointment = async (appointment) => {
+    try {
+      const saved = await firebaseApi.addAppointment({ ...appointment, status: "Pending", createdAt: new Date().toISOString() });
+      setAppointments((prev) => [...prev, saved]);
+      addNotification(`📅 New Appointment Request: ${appointment.type}`);
+
+      // 📧 Simulate Email Notification
+      setTimeout(() => {
+        toast("📧 Confirmation email sent to student!", { icon: "✉️", duration: 4000 });
+        toast("📧 Notification email sent to admins.", { icon: "📨", duration: 4000 });
+      }, 1500);
+
+    } catch (e) {
+      console.error("Failed to add appointment", e);
+      toast.error("Failed to book appointment");
+    }
+  };
+
+  const handleSendMessage = async (text, sender = "user") => {
+    try {
+      if (!user) return;
+      const newMessage = {
+        userId: user.uid,
+        userName: user.name,
+        text,
+        sender,
+        createdAt: new Date().toISOString(),
+        read: false,
+        reply: null
+      };
+      const saved = await firebaseApi.sendSupportMessage(newMessage);
+      setMessages((prev) => [...prev, saved]);
+    } catch (e) {
+      console.error("Failed to send message", e);
+      toast.error("Failed to send message");
+    }
+  };
+
+  const replyToMessage = async (messageId, replyText) => {
+    try {
+      const updated = { reply: replyText, read: true, repliedAt: new Date().toISOString() };
+      await firebaseApi.updateMessage(messageId, updated);
+      setMessages(prev => prev.map(m => m.id === messageId ? { ...m, ...updated } : m));
+      toast.success("Reply sent! 📨");
+    } catch (e) {
+      console.error("Failed to reply", e);
+      toast.error("Failed to reply");
+    }
+  };
+
+
+
+
+
+  // ... (Initial Data Fetching inside useEffect needs update to load these) ...
+  // Updating the loadData function inside useEffect:
+
+  // ✅ Student Data Update
+  const updateOwnData = async (updatedData) => {
+    if (!user || user.role !== "Student") return;
+    try {
+      await firebaseApi.updateStudent(user.uid, updatedData);
+
+      // Update local state
+      setStudents(prev => prev.map(s => s.id === user.uid ? { ...s, ...updatedData } : s));
+
+      toast.success("Profile Updated! ✅");
+    } catch (error) {
+      console.error("Failed to update profile", error);
+      toast.error("Failed to save changes.");
+    }
   };
 
   const updateAppointmentStatus = (id, status, note, assignedTo = null, newDate = null) => {
@@ -448,40 +783,49 @@ function App() {
       } else {
         message = `Your appointment request was updated: ${status}`;
       }
+
+      // Persist to Firebase
+      firebaseApi.updateAppointment(id, { status, notes: note, assignedTo, date: newDate || appt.date })
+        .catch(err => console.error("Failed to update appointment", err));
+
       addNotification(message);
     }
   };
 
-  // ✅ Analytics State
-  // const [analytics, setAnalytics] = useState(() => {
-  //   const storedAnalytics = localStorage.getItem("analyticsData");
-  //   return storedAnalytics ? JSON.parse(storedAnalytics) : {
-  //     totalLogins: 0,
-  //     pageViews: 0,
-  //     resourceViews: {}, // { resourceId: count }
-  //   };
-  // });
-
-
-
-  // ✅ Tracking Functions
-  const trackLogin = () => {
-    setAnalytics((prev) => ({ ...prev, totalLogins: prev.totalLogins + 1 }));
+  const addPoll = (newPoll) => {
+    setPolls(prev => [...prev, { ...newPoll, id: Date.now(), votes: {} }]); // votes: { optionIndex: count }
+    addNotification(`📊 New Poll: ${newPoll.question}`);
   };
 
-  const trackPageView = () => {
-    setAnalytics((prev) => ({ ...prev, pageViews: prev.pageViews + 1 }));
-  };
-
-  const trackResourceView = (resourceId) => {
-    setAnalytics((prev) => ({
-      ...prev,
-      resourceViews: {
-        ...prev.resourceViews,
-        [resourceId]: (prev.resourceViews[resourceId] || 0) + 1,
-      },
+  const votePoll = (pollId, optionIndex) => {
+    setPolls(prev => prev.map(p => {
+      if (p.id === pollId) {
+        const currentVotes = p.votes[optionIndex] || 0;
+        return { ...p, votes: { ...p.votes, [optionIndex]: currentVotes + 1 } };
+      }
+      return p;
     }));
+    toast.success("Vote recorded! 🗳️");
   };
+
+  const deletePoll = (pollId) => {
+    setPolls(prev => prev.filter(p => p.id !== pollId));
+  };
+
+  // ✅ System Actions
+  const toggleMaintenanceMode = () => {
+    setSystemSettings(prev => ({ ...prev, maintenanceMode: !prev.maintenanceMode }));
+    toast.success(`Maintenance Mode ${!systemSettings.maintenanceMode ? 'Enabled 🔒' : 'Disabled 🔓'}`);
+  };
+
+  const sendBroadcastAlert = (message) => {
+    setSystemSettings(prev => ({ ...prev, broadcastMessage: message }));
+    if (message) toast.error(`🚨 ALERT SENT: ${message}`, { duration: 5000 });
+  };
+
+
+
+
 
 
 
@@ -489,325 +833,361 @@ function App() {
 
   // ✅ Router Setup
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Home */}
-        <Route
-          path="/"
-          element={
-            <Layout
-              user={user}
-              onLogout={handleLogout}
-              theme={theme}
-              toggleTheme={toggleTheme}
-              notifications={notifications}
-              markAsRead={markAsRead}
-              markAllAsRead={markAllAsRead}
-            >
-              <HomePage />
-            </Layout>
-          }
-        />
-
-        {/* Auth */}
-        <Route
-          path="/signin"
-          element={
-            <Layout
-              user={user}
-              onLogout={handleLogout}
-              theme={theme}
-              toggleTheme={toggleTheme}
-              notifications={notifications}
-              markAsRead={markAsRead}
-              markAllAsRead={markAllAsRead}
-            >
-              <SignIn onLogin={handleLogin} trackLogin={trackLogin} />
-            </Layout>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <Layout
-              user={user}
-              onLogout={handleLogout}
-              theme={theme}
-              toggleTheme={toggleTheme}
-              notifications={notifications}
-              markAsRead={markAsRead}
-              markAllAsRead={markAllAsRead}
-            >
-              <SignUp />
-            </Layout>
-          }
-        />
-
-        {/* Student Dashboard */}
-        <Route
-          path="/student-dashboard"
-          element={
-            user?.role === "Student" ? (
-              <Layout
-                user={user}
-                onLogout={handleLogout}
-                theme={theme}
-                toggleTheme={toggleTheme}
-                notifications={notifications}
-                markAsRead={markAsRead}
-                markAllAsRead={markAllAsRead}
-              >
-                <StudentDashboard
+    <div className={`app-container ${theme}`} data-theme={theme}>
+      <BrowserRouter>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Public Routes */}
+            <Route
+              path="/"
+              element={
+                <Layout
                   user={user}
-                  studentData={students.find((s) => s.id === user.studentId)}
-                  updateOwnData={updateOwnData}
-                  enrollInProgram={enrollInProgram}
-                  leaveProgram={leaveProgram}
-                  announcements={announcements}
-                  trackPageView={trackPageView}
-                  trackResourceView={trackResourceView}
-                  savedResources={students.find((s) => s.id === user.studentId)?.savedResources || []}
-                  toggleSaveResource={toggleSaveResource}
-                  resources={resources}
-                  appointments={appointments.filter((a) => a.studentId === user.studentId)}
-                  addAppointment={addAppointment}
-                />
-              </Layout>
-            ) : (
-              <Navigate to="/signin" />
-            )
-          }
-        />
+                  onLogout={handleLogout}
+                  theme={theme}
+                  toggleTheme={toggleTheme}
+                  notifications={notifications}
+                  markAsRead={markAsRead}
+                  markAllAsRead={markAllAsRead}
+                  onSendMessage={handleSendMessage}
+                  messages={messages}
+                >
+                  <HomePage user={user} />
+                </Layout>
+              }
+            />
 
-        {/* Admin Dashboard */}
-        <Route
-          path="/admin-dashboard"
-          element={
-            user?.role === "Admin" ? (
-              <Layout
-                user={user}
-                onLogout={handleLogout}
-                theme={theme}
-                toggleTheme={toggleTheme}
-                notifications={notifications}
-                markAsRead={markAsRead}
-                markAllAsRead={markAllAsRead}
-              >
-                <AdminDashboard
-                  students={students}
-                  updateStudentData={updateStudentData}
-                  resources={resources}
-                  addResource={addResource}
-                  updateResource={updateResource}
-                  deleteResource={deleteResource}
-                  programs={programs}
-                  addProgram={addProgram}
-                  updateProgram={updateProgram}
-                  deleteProgram={deleteProgram}
-                  announcements={announcements}
-                  addAnnouncement={addAnnouncement}
-                  deleteAnnouncement={deleteAnnouncement}
-                  analytics={analytics}
-                  appointments={appointments}
-                  updateAppointmentStatus={updateAppointmentStatus}
+            {/* Auth */}
+            <Route
+              path="/signin"
+              element={
+                <Layout
                   user={user}
-                />
-              </Layout>
-            ) : (
-              <Navigate to="/signin" />
-            )
-          }
-        />
-
-        {/* Public Pages */}
-        <Route
-          path="/wellness-programs"
-          element={
-            <Layout
-              user={user}
-              onLogout={handleLogout}
-              theme={theme}
-              toggleTheme={toggleTheme}
-              notifications={notifications}
-              markAsRead={markAsRead}
-              markAllAsRead={markAllAsRead}
-            >
-              <WellnessPrograms
-                user={user}
-                studentData={students.find((s) => s.id === user?.studentId)}
-                enrollInProgram={enrollInProgram}
-                leaveProgram={leaveProgram}
-                programs={programs}
-              />
-            </Layout>
-          }
-        />
-        <Route
-          path="/health-resources"
-          element={
-            <Layout
-              user={user}
-              onLogout={handleLogout}
-              theme={theme}
-              toggleTheme={toggleTheme}
-              notifications={notifications}
-              markAsRead={markAsRead}
-              markAllAsRead={markAllAsRead}
-            >
-              <HealthResources
-                resources={resources}
-                trackResourceView={trackResourceView}
-                savedResources={students.find((s) => s.id === user?.studentId)?.savedResources || []}
-                toggleSaveResource={toggleSaveResource}
-                user={user}
-              />
-            </Layout>
-          }
-        />
-        <Route
-          path="/support-services"
-          element={
-            <Layout
-              user={user}
-              onLogout={handleLogout}
-              theme={theme}
-              toggleTheme={toggleTheme}
-              notifications={notifications}
-              markAsRead={markAsRead}
-              markAllAsRead={markAllAsRead}
-            >
-              <SupportServices />
-            </Layout>
-          }
-        />
-        <Route
-          path="/about"
-          element={
-            <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme}>
-              <About />
-            </Layout>
-          }
-        />
-        <Route
-          path="/contact"
-          element={
-            <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme}>
-              <Contact />
-            </Layout>
-          }
-        />
-
-        {/* Program Details */}
-        <Route
-          path="/program/:programId"
-          element={
-            <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme}>
-              <ProgramDetails
-                user={user}
-                studentData={students.find((s) => s.id === user?.studentId)}
-                enrollInProgram={enrollInProgram}
-                leaveProgram={leaveProgram}
-              />
-            </Layout>
-          }
-        />
-
-        {/* Profile */}
-        <Route
-          path="/profile"
-          element={
-            user ? (
-              <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
-                <Profile
+                  onLogout={handleLogout}
+                  theme={theme}
+                  toggleTheme={toggleTheme}
+                  notifications={notifications}
+                  markAsRead={markAsRead}
+                  markAllAsRead={markAllAsRead}
+                  onSendMessage={handleSendMessage}
+                  messages={messages}
+                >
+                  <SignIn onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} trackLogin={trackLogin} />
+                </Layout>
+              }
+            />
+            <Route
+              path="/signup"
+              element={
+                <Layout
                   user={user}
-                  setUser={setUser}
-                  studentData={students.find((s) => s.id === user.studentId)}
-                  updateOwnData={updateOwnData}
-                />
-              </Layout>
-            ) : (
-              <Navigate to="/signin" />
-            )
-          }
-        />
+                  onLogout={handleLogout}
+                  theme={theme}
+                  toggleTheme={toggleTheme}
+                  notifications={notifications}
+                  markAsRead={markAsRead}
+                  markAllAsRead={markAllAsRead}
+                  onSendMessage={handleSendMessage}
+                  messages={messages}
+                >
+                  <SignUp onGoogleLogin={handleGoogleLogin} />
+                </Layout>
+              }
+            />
 
-        {/* Saved Items */}
-        <Route
-          path="/saved-items"
-          element={
-            user ? (
-              <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
-                <SavedItems
-                  savedResources={students.find((s) => s.id === user?.studentId)?.savedResources || []}
-                  resources={resources}
-                  savedPrograms={students.find((s) => s.id === user?.studentId)?.savedPrograms || []}
-                  programs={programs}
-                  toggleSaveResource={toggleSaveResource}
-                  toggleSaveProgram={toggleSaveProgram}
-                  userId={user.studentId}
-                />
-              </Layout>
-            ) : (
-              <Navigate to="/signin" />
-            )
-          }
-        />
+            {/* Student Dashboard */}
+            <Route
+              path="/student-dashboard"
+              element={
+                user?.role === "Student" ? (
+                  <Layout
+                    user={user}
+                    onLogout={handleLogout}
+                    theme={theme}
+                    toggleTheme={toggleTheme}
+                    notifications={notifications}
+                    markAsRead={markAsRead}
+                    markAllAsRead={markAllAsRead}
+                    onSendMessage={handleSendMessage}
+                    messages={messages}
+                  >
+                    <StudentDashboard
+                      user={user}
+                      studentData={students.find((s) => s.id === user.studentId)}
+                      updateOwnData={updateOwnData}
+                      updatePassword={updateAppPassword}
+                      enrollInProgram={enrollInProgram}
+                      leaveProgram={leaveProgram}
+                      announcements={announcements}
+                      trackPageView={trackPageView}
+                      trackResourceView={trackResourceView}
+                      savedResources={students.find((s) => s.id === user.studentId)?.savedResources || []}
+                      toggleSaveResource={toggleSaveResource}
+                      resources={resources}
+                      programs={programs}
+                      appointments={appointments.filter((a) => a.studentId === user.studentId)}
+                      addAppointment={addAppointment}
+                      polls={polls}
+                      votePoll={votePoll}
+                      systemSettings={systemSettings}
+                    />
+                  </Layout>
+                ) : (
+                  <Navigate to="/signin" />
+                )
+              }
+            />
 
-        {/* My Programs */}
-        <Route
-          path="/my-programs"
-          element={
-            user ? (
-              <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
-                <MyPrograms
-                  enrolledPrograms={students.find((s) => s.id === user?.studentId)?.enrolledPrograms || []}
-                  programs={programs}
-                  leaveProgram={leaveProgram}
-                  userId={user.studentId}
-                />
-              </Layout>
-            ) : (
-              <Navigate to="/signin" />
-            )
-          }
-        />
+            {/* Admin Dashboard */}
+            <Route
+              path="/admin-dashboard"
+              element={
+                user?.role === "Admin" ? (
+                  <Layout
+                    user={user}
+                    onLogout={handleLogout}
+                    theme={theme}
+                    toggleTheme={toggleTheme}
+                    notifications={notifications}
+                    markAsRead={markAsRead}
+                    markAllAsRead={markAllAsRead}
+                  >
+                    <AdminDashboard
+                      students={students}
+                      updateStudentData={updateStudentData}
+                      resources={resources}
+                      addResource={addResource}
+                      updateResource={updateResource}
+                      deleteResource={deleteResource}
+                      programs={programs}
+                      addProgram={addProgram}
+                      updateProgram={updateProgram}
+                      deleteProgram={deleteProgram}
+                      announcements={announcements}
+                      addAnnouncement={addAnnouncement}
+                      deleteAnnouncement={deleteAnnouncement}
+                      updateAnnouncement={updateAnnouncement}
+                      appointments={appointments}
+                      updateAppointmentStatus={updateAppointmentStatus}
+                      user={user}
+                      polls={polls}
+                      addPoll={addPoll}
+                      deletePoll={deletePoll}
+                      systemSettings={systemSettings}
+                      toggleMaintenanceMode={toggleMaintenanceMode}
+                      sendBroadcastAlert={sendBroadcastAlert}
+                      messages={messages}
+                      replyToMessage={replyToMessage}
+                      transactions={transactions}
+                    />
+                  </Layout>
+                ) : (
+                  <Navigate to="/signin" />
+                )
+              }
+            />
 
-        {/* Book Appointment */}
-        <Route
-          path="/book-appointment"
-          element={
-            user ? (
-              <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
-                <AppointmentBooking
+            {/* Public Pages */}
+            <Route
+              path="/wellness-programs"
+              element={
+                <Layout
                   user={user}
-                  addAppointment={addAppointment}
-                />
-              </Layout>
-            ) : (
-              <Navigate to="/signin" />
-            )
-          }
-        />
-
-        {/* My Appointments */}
-        <Route
-          path="/my-appointments"
-          element={
-            user ? (
-              <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
-                <MyAppointments
-                  appointments={appointments}
+                  onLogout={handleLogout}
+                  theme={theme}
+                  toggleTheme={toggleTheme}
+                  notifications={notifications}
+                  markAsRead={markAsRead}
+                  markAllAsRead={markAllAsRead}
+                  onSendMessage={handleSendMessage}
+                  messages={messages}
+                >
+                  <WellnessPrograms
+                    user={user}
+                    studentData={students.find((s) => s.id === user?.studentId)}
+                    enrollInProgram={enrollInProgram}
+                    leaveProgram={leaveProgram}
+                    programs={programs}
+                  />
+                </Layout>
+              }
+            />
+            <Route
+              path="/health-resources"
+              element={
+                <Layout
                   user={user}
-                  cancelAppointment={cancelAppointment}
-                />
-              </Layout>
-            ) : (
-              <Navigate to="/signin" />
-            )
-          }
-        />
-      </Routes>
-    </BrowserRouter>
+                  onLogout={handleLogout}
+                  theme={theme}
+                  toggleTheme={toggleTheme}
+                  notifications={notifications}
+                  markAsRead={markAsRead}
+                  markAllAsRead={markAllAsRead}
+                  onSendMessage={handleSendMessage}
+                  messages={messages}
+                >
+                  <HealthResources
+                    resources={resources}
+                    trackResourceView={trackResourceView}
+                    savedResources={students.find((s) => s.id === user?.studentId)?.savedResources || []}
+                    toggleSaveResource={toggleSaveResource}
+                    user={user}
+                    studentData={students.find((s) => s.id === user?.uid)}
+                    programs={programs}
+                    enrollInProgram={enrollInProgram}
+                    leaveProgram={leaveProgram}
+                  />
+                </Layout>
+              }
+            />
+            <Route
+              path="/support-services"
+              element={
+                <Layout
+                  user={user}
+                  onLogout={handleLogout}
+                  theme={theme}
+                  toggleTheme={toggleTheme}
+                  notifications={notifications}
+                  markAsRead={markAsRead}
+                  markAllAsRead={markAllAsRead}
+                  onSendMessage={handleSendMessage}
+                  messages={messages}
+                >
+                  <SupportServices />
+                </Layout>
+              }
+            />
+            <Route
+              path="/about"
+              element={
+                <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme}>
+                  <About />
+                </Layout>
+              }
+            />
+            <Route
+              path="/contact"
+              element={
+                <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme}>
+                  <Contact />
+                </Layout>
+              }
+            />
+
+            {/* Program Details */}
+            <Route
+              path="/program/:programId"
+              element={
+                <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme}>
+                  <ProgramDetails
+                    user={user}
+                    studentData={students.find((s) => s.id === user?.studentId)}
+                    enrollInProgram={enrollInProgram}
+                    leaveProgram={leaveProgram}
+                  />
+                </Layout>
+              }
+            />
+
+            {/* Profile */}
+            <Route
+              path="/profile"
+              element={
+                user ? (
+                  <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
+                    <Profile
+                      user={user}
+                      setUser={setUser}
+                      studentData={students.find((s) => s.id === user.studentId)}
+                      updateOwnData={updateOwnData}
+                    />
+                  </Layout>
+                ) : (
+                  <Navigate to="/signin" />
+                )
+              }
+            />
+
+            {/* Saved Items */}
+            <Route
+              path="/saved-items"
+              element={
+                user ? (
+                  <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
+                    <SavedItems
+                      savedResources={students.find((s) => s.id === user?.studentId)?.savedResources || []}
+                      resources={resources}
+                      savedPrograms={students.find((s) => s.id === user?.studentId)?.savedPrograms || []}
+                      programs={programs}
+                      toggleSaveResource={toggleSaveResource}
+                      toggleSaveProgram={toggleSaveProgram}
+                      userId={user.studentId}
+                    />
+                  </Layout>
+                ) : (
+                  <Navigate to="/signin" />
+                )
+              }
+            />
+
+            {/* My Programs */}
+            <Route
+              path="/my-programs"
+              element={
+                user ? (
+                  <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
+                    <MyPrograms
+                      enrolledPrograms={students.find((s) => s.id === user?.studentId)?.enrolledPrograms || []}
+                      programs={programs}
+                      leaveProgram={leaveProgram}
+                      userId={user.studentId}
+                    />
+                  </Layout>
+                ) : (
+                  <Navigate to="/signin" />
+                )
+              }
+            />
+
+            {/* Book Appointment */}
+            <Route
+              path="/book-appointment"
+              element={
+                user ? (
+                  <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
+                    <AppointmentBooking
+                      user={user}
+                      addAppointment={addAppointment}
+                    />
+                  </Layout>
+                ) : (
+                  <Navigate to="/signin" />
+                )
+              }
+            />
+
+            {/* My Appointments */}
+            <Route
+              path="/my-appointments"
+              element={
+                user ? (
+                  <Layout user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} notifications={notifications} markAsRead={markAsRead} markAllAsRead={markAllAsRead}>
+                    <MyAppointments
+                      appointments={appointments}
+                      user={user}
+                      cancelAppointment={cancelAppointment}
+                    />
+                  </Layout>
+                ) : (
+                  <Navigate to="/signin" />
+                )
+              }
+            />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </div >
   );
 }
 

@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "edv": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^12.6.0",
     "jspdf": "^3.0.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

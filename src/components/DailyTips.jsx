@@ -43,14 +43,14 @@ const DailyTips = () => {
     }, []);
 
     return (
-        <div className="card" style={{ background: 'linear-gradient(135deg, var(--color-primary-light), white)', border: '1px solid var(--color-primary-light)' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-                <div style={{ fontSize: '2.5rem', background: 'white', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-sm)' }}>
+        <div className="card glass-panel p-6 hover-scale">
+            <div className="flex items-start gap-4">
+                <div className="w-16 h-16 rounded-full bg-white/50 backdrop-blur-sm flex items-center justify-center text-3xl shadow-sm shrink-0">
                     {tip.icon}
                 </div>
                 <div>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem', color: 'var(--color-primary-dark)' }}>Daily Wellness Tip: {tip.title}</h3>
-                    <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>{tip.description}</p>
+                    <h3 className="text-xl font-bold mb-2 text-primary-dark">Daily Wellness Tip: {tip.title}</h3>
+                    <p className="m-0 text-secondary">{tip.description}</p>
                 </div>
             </div>
         </div>

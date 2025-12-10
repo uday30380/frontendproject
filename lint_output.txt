@@ -1,0 +1,44 @@
+﻿
+> up@0.0.0 lint
+> eslint .
+
+
+C:\Users\Vempa\OneDrive\Desktop\up\up\src\App.jsx
+  545:29  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?   react-hooks/rules-of-hooks
+  548:47  error  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?   react-hooks/rules-of-hooks
+  554:3   error  React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+  559:3   error  React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+
+C:\Users\Vempa\OneDrive\Desktop\up\up\src\api\firebaseApi.js
+  2:8  error  'toast' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\Vempa\OneDrive\Desktop\up\up\src\components\AdminDashboard.jsx
+  517:15  error  Parsing error: Expected corresponding JSX closing tag for <undefined>
+
+C:\Users\Vempa\OneDrive\Desktop\up\up\src\components\Navbar.jsx
+  69:93  error  'toast' is not defined  no-undef
+
+C:\Users\Vempa\OneDrive\Desktop\up\up\src\components\StudentDashboard.jsx
+   20:7   error    'systemSettings' is not defined                                                                                                                                                                                                                                                     no-undef
+   32:3   error    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                                                                                                        react-hooks/rules-of-hooks
+   33:9   error    'systemSettings' is not defined                                                                                                                                                                                                                                                     no-undef
+   37:46  error    'systemSettings' is not defined                                                                                                                                                                                                                                                     no-undef
+   42:6   warning  React Hook useEffect has an unnecessary dependency: 'systemSettings.broadcastMessage'. Either exclude it or remove the dependency array. Outer scope values like 'systemSettings.broadcastMessage' aren't valid dependencies because mutating them doesn't re-render the component  react-hooks/exhaustive-deps
+   42:7   error    'systemSettings' is not defined                                                                                                                                                                                                                                                     no-undef
+   44:22  error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                                          react-hooks/rules-of-hooks
+   54:31  error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                                          react-hooks/rules-of-hooks
+   78:23  error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                                          react-hooks/rules-of-hooks
+   79:29  error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                                          react-hooks/rules-of-hooks
+   82:43  error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                                          react-hooks/rules-of-hooks
+   83:47  error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                                          react-hooks/rules-of-hooks
+   86:43  error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                                          react-hooks/rules-of-hooks
+   87:35  error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                                          react-hooks/rules-of-hooks
+   89:3   error    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                                         react-hooks/rules-of-hooks
+  123:3   error    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                                         react-hooks/rules-of-hooks
+  403:14  error    'polls' is not defined                                                                                                                                                                                                                                                              no-undef
+  403:23  error    'polls' is not defined                                                                                                                                                                                                                                                              no-undef
+  406:18  error    'polls' is not defined                                                                                                                                                                                                                                                              no-undef
+  415:42  error    'votePoll' is not defined                                                                                                                                                                                                                                                           no-undef
+
+Γ£û 27 problems (26 errors, 1 warning)
+

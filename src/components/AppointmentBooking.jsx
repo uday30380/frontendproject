@@ -43,10 +43,10 @@ const AppointmentBooking = ({ user, addAppointment, onClose }) => {
     };
 
     return (
-        <div className="appointment-booking-container">
-            <div className="booking-header">
-                <h2>📅 Book an Appointment</h2>
-                <p>Schedule a session with our wellness team</p>
+        <div className="appointment-booking-container glass-panel p-6">
+            <div className="booking-header mb-6">
+                <h2 className="text-2xl font-bold mb-2">📅 Book an Appointment</h2>
+                <p className="text-secondary text-lg">Schedule a session with our wellness team</p>
             </div>
 
             <form onSubmit={handleSubmit} className="booking-form">
@@ -66,7 +66,7 @@ const AppointmentBooking = ({ user, addAppointment, onClose }) => {
                     </select>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="grid grid-cols-2 gap-4 mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
                     <div className="form-group">
                         <label className="form-label">Preferred Date</label>
                         <input
@@ -102,11 +102,11 @@ const AppointmentBooking = ({ user, addAppointment, onClose }) => {
                     ></textarea>
                 </div>
 
-                <div className="booking-info">
+                <div className="booking-info p-4 rounded-lg bg-blue-50/10 border border-blue-100/20 mb-6 text-sm text-secondary">
                     <p>ℹ️ Your appointment request will be reviewed by our team. You'll receive a confirmation within 24 hours.</p>
                 </div>
 
-                <div className="booking-actions">
+                <div className="booking-actions flex justify-end gap-3">
                     {onClose && (
                         <button type="button" className="btn btn-outline" onClick={onClose}>
                             Cancel

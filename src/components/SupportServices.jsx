@@ -22,9 +22,10 @@ function SupportServices() {
       icon: "📞",
       title: "24/7 Crisis Helpline",
       description: "Immediate emotional support for urgent situations. Reach out anytime, day or night.",
-      color: "var(--color-danger-bg)",
-      textColor: "var(--color-danger)",
+      color: "rgba(255, 99, 71, 0.15)", // Custom danger light
+      textColor: "#FF6347", // Custom danger
       action: "Call Now",
+      isUrgent: true
     },
     {
       icon: "📚",
@@ -53,12 +54,13 @@ function SupportServices() {
   ];
 
   return (
-    <div className="homepage">
+    <div className="support-services fade-in">
       {/* Hero Section */}
-      <section className="hero-section" style={{ padding: "4rem 2rem", textAlign: "center", flexDirection: "column", gap: "1.5rem" }}>
-        <div className="hero-content" style={{ maxWidth: "800px", margin: "0 auto" }}>
-          <h1 className="hero-title" style={{ fontSize: "3rem" }}>Support Services</h1>
-          <p className="hero-description" style={{ margin: "0 auto" }}>
+      {/* Hero Section */}
+      <section className="support-hero">
+        <div className="container">
+          <h1 className="hero-title">Support Services</h1>
+          <p className="hero-description">
             We care about your mental, emotional, and physical well-being.
             Access our comprehensive support network whenever you need help.
           </p>
@@ -66,32 +68,29 @@ function SupportServices() {
       </section>
 
       {/* Services Grid */}
-      <section className="features-section" style={{ paddingTop: "2rem" }}>
-        <div className="container">
-          <div className="features-grid">
-            {services.map((service, index) => (
-              <div key={index} className="feature-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div
-                  className="feature-icon"
-                  style={{
-                    backgroundColor: service.color,
-                    color: service.textColor,
-                    fontSize: "2rem",
-                  }}
-                >
-                  {service.icon}
-                </div>
-                <h3>{service.title}</h3>
-                <p style={{ flex: 1 }}>{service.description}</p>
-                <button
-                  className={`btn btn-sm ${service.title.includes("Crisis") ? "btn-danger" : "btn-outline"}`}
-                  style={{ marginTop: "1.5rem", alignSelf: "flex-start" }}
-                >
-                  {service.action}
-                </button>
+      <section className="container">
+        <div className="services-grid">
+          {services.map((service, index) => (
+            <div key={index} className="card glass-panel feature-card-animated service-card">
+              <div
+                className="service-icon-wrapper"
+                style={{
+                  backgroundColor: service.color,
+                  color: service.textColor,
+                }}
+              >
+                {service.icon}
               </div>
-            ))}
-          </div>
+              <h3 className="text-xl font-bold mb-2">{service.title}</h3>
+              <p className="text-secondary mb-4 flex-1">{service.description}</p>
+              <button
+                className={`btn ${service.isUrgent ? "btn-danger" : "btn-outline"}`}
+                style={{ alignSelf: "flex-start", width: "100%" }}
+              >
+                {service.action}
+              </button>
+            </div>
+          ))}
         </div>
       </section>
     </div>

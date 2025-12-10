@@ -3,109 +3,103 @@ import toast from "react-hot-toast";
 import jsPDF from "jspdf";
 import ActivityChart from "./charts/ActivityChart";
 import MoodTrendChart from "./charts/MoodTrendChart";
+import { firebaseApi } from "../api/firebaseApi"; // Import API
 
-const AdminDashboard = ({ students, setStudents, updateStudentData, resources, addResource, updateResource, deleteResource, programs, addProgram, updateProgram, deleteProgram, announcements, addAnnouncement, deleteAnnouncement, analytics, appointments = [], updateAppointmentStatus, user }) => {
+const AdminDashboard = ({ students, updateStudentData, resources, addResource, deleteResource, updateResource, programs, addProgram, deleteProgram, updateProgram, announcements, addAnnouncement, deleteAnnouncement, updateAnnouncement, analytics, appointments = [], updateAppointmentStatus, user, polls, addPoll, deletePoll, systemSettings, toggleMaintenanceMode, sendBroadcastAlert, messages = [], replyToMessage, transactions = [] }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [activeTab, setActiveTab] = useState("Dashboard Overview");
   const [newNote, setNewNote] = useState("");
-  const [newMessage, setNewMessage] = useState("");
+  const [showPollModal, setShowPollModal] = useState(false);
+
   const [activityData, setActivityData] = useState([]);
   const [moodData, setMoodData] = useState([]);
   const [loginData, setLoginData] = useState([]);
 
-  // DEBUG: Log props to check for missing data
-  console.log("AdminDashboard Props:", { students, resources, programs, analytics });
+  // Announcement State
+  const [isAddingAnnouncement, setIsAddingAnnouncement] = useState(false);
+  const [newAnnouncement, setNewAnnouncement] = useState({ title: "", content: "", type: "Info" });
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
 
-  // Safety Check: If students data is missing, show loading or empty state
+  // Resource State
+  const [isAddingResource, setIsAddingResource] = useState(false);
+  const [newResource, setNewResource] = useState({ title: "", category: "General", thumbnail: "📚", isFeatured: false, link: "#" });
+
+  // Program State
+  const [isAddingProgram, setIsAddingProgram] = useState(false);
+  const [newProgram, setNewProgram] = useState({ title: "", category: "Wellness", icon: "🧘‍♀️", duration: "4 Weeks", level: "Beginner" });
+
+  // Edit States
+  const [editingResource, setEditingResource] = useState(null);
+  const [editingProgram, setEditingProgram] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        await firebaseApi.fetchAllData();
+        // Assuming parent passes updateStudentData or we set it locally. 
+        // In this specific structure, students are passed as props. 
+        // Ideally, the Parent (App.jsx) fetches data and passes it down.
+        // BUT, if we want the dashboard to self-refresh or if props are null initially:
+        if (!students || students.length === 0) {
+          // For now, let's just log. Since data flow seems to be from App.jsx,
+          // we might need to modify App.jsx to fetch real data initially.
+          console.log("AdminDashboard mounted. Real data should be passed from App.jsx");
+        }
+      } catch (e) {
+        console.error("Dashboard fetch error", e);
+      }
+    };
+    fetchData();
+
+    const generateAggregatedData = () => {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const newActivityData = days.map(day => ({
+        name: day,
+        steps: Math.floor(Math.random() * 3000) + 3000,
+        meditation: Math.floor(Math.random() * 20) + 15,
+      }));
+      const newMoodData = days.map(day => ({
+        name: day,
+        mood: Math.floor(Math.random() * 3) + 6,
+      }));
+      setActivityData(newActivityData);
+      setMoodData(newMoodData);
+      setLoginData(days.map(day => ({ name: day, mood: Math.floor(Math.random() * 50) + 10 })));
+    };
+    if (students) {
+      generateAggregatedData();
+    }
+  }, [students]);
+
+  // Safety Check
   if (!students) {
     return (
-      <div className="dashboard admin-dashboard center-content">
-        <div className="loading-spinner">Loading Dashboard Data...</div>
+      <div className="center-content" style={{ height: '50vh' }}>
+        <div className="loading-spinner"></div>
+        <p>Loading Dashboard Data...</p>
       </div>
     );
   }
 
-
-
-
-
-  // Appointment Management State
-  const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [appointmentAction, setAppointmentAction] = useState(""); // "Approve", "Reject", "Reschedule"
-  const [appointmentNote, setAppointmentNote] = useState("");
-  const [rescheduleDate, setRescheduleDate] = useState("");
-
-  // Resource Management State
-  const [isEditingResource, setIsEditingResource] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [editResourceForm, setEditResourceForm] = useState({
-    title: "", category: "Mental Health", type: "Article", description: "", thumbnail: "📝", duration: "", author: ""
-  });
-
-  // Program Management State
-  const [isEditingProgram, setIsEditingProgram] = useState(false);
-  const [editProgramForm, setEditProgramForm] = useState({
-    id: "", title: "", category: "Physical", icon: "🏃‍♂️", color: "#4CAF50", textColor: "#FFFFFF", description: "", detailedDescription: "", img: "", duration: "", level: "All Levels"
-  });
-
-  // Announcement State
-  const [isAddingAnnouncement, setIsAddingAnnouncement] = useState(false);
-  const [newAnnouncement, setNewAnnouncement] = useState({ title: "", content: "", type: "Info" });
-
-  useEffect(() => {
-    // Simulate aggregated data generation based on students
-    const generateAggregatedData = () => {
-      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-      // Mocking aggregated activity (e.g., avg steps of all students)
-      const newActivityData = days.map(day => ({
-        name: day,
-        steps: Math.floor(Math.random() * 3000) + 3000, // Higher avg for group
-        meditation: Math.floor(Math.random() * 20) + 15,
-      }));
-
-      // Mocking aggregated mood trend
-      const newMoodData = days.map(day => ({
-        name: day,
-        mood: Math.floor(Math.random() * 3) + 6, // Avg mood 6-9
-      }));
-
-      setActivityData(newActivityData);
-      setMoodData(newMoodData);
-      setLoginData(days.map(day => ({ name: day, mood: Math.floor(Math.random() * 50) + 10 }))); // Reusing 'mood' key for LineChart compatibility
-    };
-
-    generateAggregatedData();
-  }, [students]);
-
   const filteredStudents = students.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.department.toLowerCase().includes(searchTerm.toLowerCase())
+    (s.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (s.department?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   );
 
   const selectedStudent = filteredStudents[selectedIndex] || filteredStudents[0];
 
-  // 🔄 Navigation
-  const nextStudent = () => setSelectedIndex((i) => (i + 1) % filteredStudents.length);
-  const prevStudent = () => setSelectedIndex((i) => (i - 1 + filteredStudents.length) % filteredStudents.length);
-
-  // 🗒️ Add Note
-  // 🗒️ Add Note
   const addNote = () => {
     if (!newNote.trim() || !selectedStudent) return;
     const updated = { ...selectedStudent, notes: [...(selectedStudent.notes || []), newNote] };
     updateStudentData(updated);
     setNewNote("");
-    toast("Note added 📝", { icon: "🗒️" });
+    toast.success("Note added 📝");
   };
 
-  // ✏️ Edit Student (Placeholder)
-  const handleEditStudent = () => {
-    toast("Edit Student feature coming soon! 🚧", { icon: "👨‍🎓" });
-  };
+  // Use real user name if available, otherwise fallback
+  const adminName = user?.displayName || user?.name || "Admin";
 
-  // 📤 Export Report (was sendMessage)
   const exportReport = () => {
     if (!selectedStudent) return;
     const doc = new jsPDF();
@@ -122,283 +116,603 @@ const AdminDashboard = ({ students, setStudents, updateStudentData, resources, a
     toast.success("Report exported as PDF 📊");
   };
 
-  // Alias for backward compatibility if needed, or just use exportReport
-  const sendMessage = exportReport;
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "Dashboard Overview":
+        return (
+          <div>
+            <h3 style={{ marginBottom: '1rem' }}>📊 System Overview</h3>
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
+              <div className="stat-card" style={{ padding: '1.5rem', background: 'var(--color-info-bg)', borderRadius: 'var(--radius-lg)' }}>
+                <h4>Total Students</h4>
+                <p className="stat-value" style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-info)' }}>{students.length}</p>
+              </div>
+              <div className="stat-card" style={{ padding: '1.5rem', background: 'var(--color-danger-bg)', borderRadius: 'var(--radius-lg)' }}>
+                <h4>High Risk</h4>
+                <p className="stat-value" style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-danger)' }}>
+                  {students.filter(s => s.riskLevel === "High" || s.riskLevel === "Critical").length}
+                </p>
+              </div>
+              <div className="stat-card" style={{ padding: '1.5rem', background: 'var(--color-success-bg)', borderRadius: 'var(--radius-lg)' }}>
+                <h4>Avg Wellness</h4>
+                <p className="stat-value" style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--color-success)' }}>
+                  {Math.round(students.reduce((acc, s) => acc + s.wellnessScore, 0) / students.length)}%
+                </p>
+              </div>
+              <div className="stat-card" style={{ padding: '1.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
+                <h4>System Status</h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <div style={{ width: '12px', height: '12px', background: 'var(--color-success)', borderRadius: '50%', boxShadow: '0 0 8px var(--color-success)' }}></div>
+                  <span style={{ fontWeight: '600' }}>Operational</span>
+                </div>
+                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '0.25rem' }}>Latency: 24ms</div>
+              </div>
+            </div>
+          </div>
+        );
+      case "Audit Logs":
+        return (
+          <div className="card glass-panel" style={{ padding: '1.5rem' }}>
+            <h3>🛡️ System Audit Logs</h3>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                  <th style={{ padding: '0.5rem' }}>Time</th>
+                  <th style={{ padding: '0.5rem' }}>Action</th>
+                  <th style={{ padding: '0.5rem' }}>Admin</th>
+                  <th style={{ padding: '0.5rem' }}>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { time: "10:42 AM", action: "DELETE_RESOURCE", admin: "Admin", details: "Removed 'Outdated Guide'" },
+                  { time: "09:15 AM", action: "USER_LOGIN", admin: "System", details: "User 'John Doe' logged in" },
+                  { time: "Yesterday", action: "UPDATE_POLICY", admin: "SuperAdmin", details: "Updated privacy terms" },
+                ].map((log, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem', opacity: 0.8 }}>{log.time}</td>
+                    <td style={{ padding: '0.75rem' }}><span className="badge badge-outline">{log.action}</span></td>
+                    <td style={{ padding: '0.75rem' }}>{log.admin}</td>
+                    <td style={{ padding: '0.75rem', opacity: 0.8 }}>{log.details}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      case "Overview":
+        return (
+          <div className="overview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div className="card glass-panel" style={{ padding: '1.5rem' }}>
+              <h4 style={{ marginBottom: '1rem' }}>Academic Info</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <p style={{ margin: 0 }}><b>ID:</b> {selectedStudent.id}</p>
+                <p style={{ margin: 0 }}><b>Email:</b> {selectedStudent.email}</p>
+                <p style={{ margin: 0 }}><b>Year:</b> {selectedStudent.year}</p>
+              </div>
+            </div>
+            <div className="card glass-panel" style={{ padding: '1.5rem' }}>
+              <h4 style={{ marginBottom: '1rem' }}>Wellness Status</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <p style={{ margin: 0 }}><b>Risk Level:</b> {selectedStudent.riskLevel}</p>
+                <p style={{ margin: 0 }}><b>Wellness Score:</b> {selectedStudent.wellnessScore}%</p>
+              </div>
+            </div>
+
+            <div className="card glass-panel" style={{ padding: '1.5rem', gridColumn: '1 / -1' }}>
+              <h4 style={{ marginBottom: '1rem' }}>📚 Enrolled Programs</h4>
+              {selectedStudent.enrolledPrograms?.length > 0 ? (
+                <div className="flex gap-2 flex-wrap">
+                  {selectedStudent.enrolledPrograms.map(progId => {
+                    const prog = programs?.find(p => p.id === progId);
+                    return (
+                      <span key={progId} className="badge badge-primary">
+                        {prog ? prog.title : `Program ID: ${progId}`}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : <p className="text-secondary text-sm">Not enrolled in any programs.</p>}
+            </div>
+          </div>
+        );
+      case "Physical Health":
+        return (
+          <div className="card glass-panel" style={{ padding: '1.5rem' }}>
+            <h3>💪 Physical Metrics</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+              <div><b>BMI:</b> {selectedStudent.bmi}</div>
+              <div><b>Activity:</b> {selectedStudent.activity}</div>
+              <div><b>Sleep:</b> {selectedStudent.sleep} hrs/day</div>
+            </div>
+          </div>
+        );
+      case "Mental Wellness":
+        return (
+          <div className="card glass-panel" style={{ padding: '1.5rem' }}>
+            <h3>🧠 Mental Wellness</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+              <div><b>Stress Level:</b> {selectedStudent.stress}/10</div>
+              <div><b>Sessions:</b> {selectedStudent.sessions}</div>
+              <div><b>Mood:</b> {selectedStudent.stress > 7 ? "High Stress" : "Stable"}</div>
+            </div>
+          </div>
+        );
+      case "Admin Notes":
+        return (
+          <div>
+            <h3>🗒️ Admin Notes</h3>
+            <ul className="notes-list" style={{ marginBottom: '1.5rem', listStyle: 'none' }}>
+              {selectedStudent.notes?.map((n, i) => (
+                <li key={i} className="note-item" style={{ background: 'var(--color-surface)', padding: '0.75rem', marginBottom: '0.5rem', borderRadius: 'var(--radius-sm)' }}>🟢 {n}</li>
+              ))}
+            </ul>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <textarea
+                className="form-control"
+                placeholder="Add a note..."
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                rows="2"
+              ></textarea>
+              <button className="btn btn-primary" onClick={addNote}>Add</button>
+            </div>
+          </div>
+        );
+      case "Resource Management":
+        return (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h3>📚 Resources</h3>
+              <button className="btn btn-primary btn-sm" onClick={() => setIsAddingResource(true)}>+ Add Resource</button>
+            </div>
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              {resources?.map(r => (
+                <div key={r.id} className="card glass-panel" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ fontSize: '1.5rem' }}>{r.thumbnail}</div>
+                    <div>
+                      <div style={{ fontWeight: '600' }}>{r.title}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{r.category}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      className={`btn btn-sm ${r.isFeatured ? 'btn-gold' : 'btn-outline'}`}
+                      onClick={() => {
+                        const updated = { ...r, isFeatured: !r.isFeatured };
+                        if (typeof updateResource === 'function') updateResource(updated);
+                        toast.success(updated.isFeatured ? "Marked as Featured! 🌟" : "Removed from Featured");
+                      }}
+                      title="Toggle Featured"
+                    >
+                      {r.isFeatured ? '★' : '☆'}
+                    </button>
+                    <button className="btn btn-sm btn-outline" onClick={() => setEditingResource(r)}>✏️</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => { if (window.confirm('Delete?')) deleteResource(r.id); }}>🗑️</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case "Program Management":
+        return (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h3>🧘‍♀️ Programs</h3>
+              <button className="btn btn-primary btn-sm" onClick={() => setIsAddingProgram(true)}>+ Add Program</button>
+            </div>
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              {programs?.map(p => (
+                <div key={p.id} className="card glass-panel" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ fontSize: '1.5rem' }}>{p.icon}</div>
+                    <div>
+                      <div style={{ fontWeight: '600' }}>{p.title}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{p.category}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-sm btn-outline" onClick={() => setEditingProgram(p)}>✏️</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => { if (window.confirm('Delete?')) deleteProgram(p.id); }}>🗑️</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case "Appointments":
+        return (
+          <div>
+            <h3>📅 Appointments</h3>
+            <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+              {appointments.map(appt => (
+                <div key={appt.id} className="card glass-panel" style={{ padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ fontWeight: '600', fontSize: '1.1rem' }}>{appt.studentName}</span>
+                    <span className={`badge ${appt.status === 'Confirmed' ? 'badge-success' : appt.status === 'Pending' ? 'badge-warning' : 'badge-danger'}`}>{appt.status}</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>{appt.type} Session • {appt.date}</p>
+
+                  {appt.status === 'Pending' && (
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                      <button className="btn btn-success" onClick={() => updateAppointmentStatus(appt.id, "Confirmed", "Approved", user?.name)}>✓ Approve</button>
+                      <button className="btn btn-danger" onClick={() => updateAppointmentStatus(appt.id, "Rejected", "Rejected", user?.name)}>✕ Reject</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case "System Controls":
+        return (
+          <div className="card glass-panel" style={{ padding: '1.5rem' }}>
+            <h3>⚙️ System Controls</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1rem' }}>
+              <div style={{ padding: '1rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+                <h4>🔒 Maintenance Mode</h4>
+                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>Lock student access for updates.</p>
+                <button className={`btn ${systemSettings?.maintenanceMode ? 'btn-danger' : 'btn-outline'}`} onClick={toggleMaintenanceMode}>
+                  {systemSettings?.maintenanceMode ? 'Disable Maintenance' : 'Enable Maintenance'}
+                </button>
+              </div>
+              <div style={{ padding: '1rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+                <h4>📢 Broadcast Alert</h4>
+                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>Send urgent modal to all users.</p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input className="form-control" placeholder="Alert Message..." id="broadcastInput" />
+                  <button className="btn btn-primary" onClick={() => sendBroadcastAlert(document.getElementById('broadcastInput').value)}>Send</button>
+                </div>
+              </div>
+            </div>
+
+            <h3 style={{ marginTop: '2rem' }}>📊 Active Polls</h3>
+            <button className="btn btn-sm btn-primary" onClick={() => setShowPollModal(true)} style={{ marginTop: '0.5rem' }}>+ Create New Poll</button>
+            <ul style={{ marginTop: '1rem', listStyle: 'none' }}>
+              {polls?.map(p => (
+                <li key={p.id} style={{ padding: '0.75rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{p.question}</span>
+                  <button className="btn btn-xs btn-danger" onClick={() => deletePoll(p.id)}>End</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      case "Messages": {
+        const unreadMessages = messages?.filter(m => !m.read || !m.reply).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        const repliedMessages = messages?.filter(m => m.reply).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        return (
+          <div className="card glass-panel p-6">
+            <h3 className="mb-4 text-xl font-bold">💬 Student Messages</h3>
+
+            <div className="mb-6">
+              <h4 className="border-b border-gray-200 pb-2 mb-4 text-primary">Pending Inquiries ({unreadMessages?.length || 0})</h4>
+              {unreadMessages?.length > 0 ? (
+                <div className="space-y-4">
+                  {unreadMessages.map(msg => (
+                    <div key={msg.id} className="p-4 bg-white/50 rounded-lg border border-gray-100 hover:shadow-sm transition-all">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-800">{msg.userName || "Student"}</span>
+                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {new Date(msg.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 mb-3 bg-gray-50 p-2 rounded">{msg.text}</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Type a reply..."
+                          className="flex-1 p-2 text-sm border border-gray-300 rounded focus:border-primary focus:outline-none"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              replyToMessage(msg.id, e.target.value);
+                              e.target.value = '';
+                            }
+                          }}
+                        />
+                        <button className="btn btn-sm btn-primary" onClick={(e) => {
+                          const input = e.target.previousSibling;
+                          if (input.value.trim()) {
+                            replyToMessage(msg.id, input.value);
+                            input.value = '';
+                          }
+                        }}>Reply</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-400 italic">No new messages.</p>
+              )}
+            </div>
+
+            <div className="opacity-70 mt-8">
+              <h4 className="border-b border-gray-200 pb-2 mb-4">Replied History</h4>
+              {repliedMessages?.length > 0 ? (
+                <div className="space-y-3">
+                  {repliedMessages.slice(0, 5).map(msg => (
+                    <div key={msg.id} className="text-sm p-3 bg-gray-50 rounded">
+                      <div className="flex justify-between mb-1">
+                        <span className="font-medium">{msg.userName}</span>
+                        <span className="text-xs text-gray-400">{new Date(msg.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="mb-1 text-gray-600">Q: {msg.text}</div>
+                      <div className="text-green-700 pl-2 border-l-2 border-green-500">A: {msg.reply}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="text-sm text-gray-400">No history yet.</p>}
+            </div>
+          </div>
+        );
+      }
+      case "Announcements":
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold">📢 Manage Announcements</h3>
+              <button className="btn btn-primary" onClick={() => setIsAddingAnnouncement(true)}>+ New Announcement</button>
+            </div>
+
+            <div className="grid gap-4">
+              {announcements?.length > 0 ? (
+                announcements.map(ann => (
+                  <div key={ann.id} className="card glass-panel p-4 flex justify-between items-start group hover:shadow-md transition-all">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`badge ${ann.type === 'Alert' ? 'badge-danger' : 'badge-primary'}`}>{ann.type}</span>
+                        <h4 className="font-bold text-lg text-gray-800">{ann.title}</h4>
+                      </div>
+                      <p className="text-gray-600 mb-2">{ann.content}</p>
+                      <span className="text-xs text-gray-400">ID: {ann.id} • Date: {ann.date}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="btn btn-sm btn-outline" onClick={() => {
+                        // Pre-fill and open modal (re-using add modal logic or separate edit state)
+                        // For simplicity, let's use a new editing state
+                        setEditingAnnouncement(ann);
+                      }}>✏️ Edit</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => {
+                        if (window.confirm("Are you sure you want to delete this announcement?")) {
+                          deleteAnnouncement(ann.id);
+                        }
+                      }}>🗑️</button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 italic text-center py-8">No active announcements.</p>
+              )}
+            </div>
+          </div>
+        );
+      case "Financials": {
+        const totalRevenue = transactions?.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0) || 0;
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="card glass-panel p-6">
+                <h3 className="text-gray-500 mb-2">Total Revenue</h3>
+                <h2 className="text-4xl font-bold text-success">${totalRevenue.toFixed(2)}</h2>
+              </div>
+              <div className="card glass-panel p-6">
+                <h3 className="text-gray-500 mb-2">Total Transactions</h3>
+                <h2 className="text-4xl font-bold">{transactions?.length || 0}</h2>
+              </div>
+            </div>
+
+            <div className="card glass-panel p-6">
+              <h3 className="text-xl font-bold mb-4">Transaction History</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/10 text-left">
+                      <th className="p-3">Date</th>
+                      <th className="p-3">User</th>
+                      <th className="p-3">Item</th>
+                      <th className="p-3">Amount</th>
+                      <th className="p-3">Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions?.length > 0 ? transactions.map(t => (
+                      <tr key={t.id} className="border-b border-white/5">
+                        <td className="p-3 text-sm">{new Date(t.createdAt).toLocaleDateString()}</td>
+                        <td className="p-3 font-bold">{t.userName}</td>
+                        <td className="p-3">{t.programTitle}</td>
+                        <td className="p-3 text-success font-mono font-bold">${t.amount}</td>
+                        <td className="p-3"><span className="badge badge-info">{t.type}</span></td>
+                      </tr>
+                    )) : (
+                      <tr><td colSpan="5" className="p-8 text-center text-gray-400">No transactions yet.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="dashboard admin-dashboard">
+    <div className="dashboard admin-dashboard fade-in">
       <div className="dashboard-container">
-        {/* Header */}
-        <div className="dashboard-header">
+
+        {/* Premium Header */}
+        <div className="dashboard-header-premium glass-panel" style={{ marginBottom: '2rem', padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1>🧭 Admin Dashboard</h1>
-            <p>Student Health and Wellness System</p>
+            <h1 style={{ marginBottom: '0.5rem', fontSize: '2.5rem', fontWeight: '800', background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Hello, {adminName}! 👋</h1>
+            <p className="welcome-text" style={{ fontSize: '1.2rem', opacity: 0.9 }}>Here's what's happening today.</p>
+          </div>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-primary" onClick={() => setIsAddingAnnouncement(true)}>📢 Post Announcement</button>
           </div>
         </div>
 
-        {/* Analytics Overview */}
-        <section className="dashboard-section fade-in" style={{ marginBottom: "3rem" }}>
-          <div className="section-header">
-            <h2>Analytics Overview</h2>
-          </div>
+        {/* Analytics Overview Section */}
+        <section className="dashboard-section" style={{ marginBottom: "2.5rem" }}>
 
-          {/* 🔔 Pending Appointments Widget */}
+          {/* Pending Appointments Alert */}
           {appointments.some(a => a.status === 'Pending') && (
-            <div className="card" style={{ marginBottom: '2rem', borderLeft: '4px solid var(--color-warning)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  📅 Pending Appointment Requests
-                  <span className="badge badge-warning">{appointments.filter(a => a.status === 'Pending').length}</span>
+            <div className="glass-panel" style={{ marginBottom: '2rem', borderLeft: '4px solid var(--color-warning)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', background: 'var(--color-warning-bg)' }}>
+              <div>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-warning-dark)' }}>
+                  📅 {appointments.filter(a => a.status === 'Pending').length} Pending Appointments
                 </h3>
-                <button className="btn btn-sm btn-outline" onClick={() => setActiveTab("Appointments")}>View All</button>
+                <p style={{ margin: '0.25rem 0 0', color: 'var(--color-text-secondary)' }}>Review requests from students.</p>
               </div>
-              <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-                {appointments.filter(a => a.status === 'Pending').slice(0, 3).map(appt => (
-                  <div key={appt.id} style={{ background: 'var(--color-surface-alt)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: '600' }}>{appt.studentName}</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{appt.date}</span>
-                    </div>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>
-                      {appt.type} • {appt.reason}
-                    </p>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      <button
-                        className="btn btn-sm btn-success"
-                        style={{ flex: 1 }}
-                        onClick={() => updateAppointmentStatus(appt.id, "Confirmed", "Approved from Dashboard", user?.name || "Admin")}
-                      >
-                        Approve ✅
-                      </button>
-                      <button
-                        className="btn btn-sm btn-danger"
-                        style={{ flex: 1 }}
-                        onClick={() => {
-                          setSelectedAppointment(appt);
-                          setAppointmentAction("Reject");
-                          setAppointmentNote("");
-                          setActiveTab("Appointments");
-                        }}
-                      >
-                        Reject ❌
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <button className="btn btn-outline" style={{ borderColor: 'var(--color-warning)', color: 'var(--color-warning-dark)' }} onClick={() => setActiveTab("Appointments")}>Review Now</button>
             </div>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "2rem" }}>
-            {/* 📢 Quick Announcement Widget */}
-            <div className="card">
-              <h3 style={{ marginBottom: "1rem" }}>📢 Post Announcement</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <input
-                  type="text"
-                  placeholder="Title"
-                  style={{ padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-background)' }}
-                  value={newAnnouncement.title}
-                  onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
-                />
-                <textarea
-                  placeholder="Message..."
-                  rows="3"
-                  style={{ padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-background)', resize: 'none' }}
-                  value={newAnnouncement.content}
-                  onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
-                ></textarea>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => {
-                    if (!newAnnouncement.title || !newAnnouncement.content) return toast.error("Please fill in all fields");
-                    addAnnouncement({ ...newAnnouncement, id: Date.now(), date: new Date().toLocaleDateString() });
-                    setNewAnnouncement({ title: "", content: "", type: "Info" });
-                    toast.success("Announcement Posted! 📢");
-                  }}
-                >
-                  Post Now 🚀
-                </button>
-              </div>
-            </div>
-
-            {/* ⚡ Recent Activity Feed */}
-            <div className="card">
-              <h3 style={{ marginBottom: "1rem" }}>⚡ Recent Activity</h3>
-              <div className="activity-feed" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {students.slice(0, 5).map((s, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'start', fontSize: '0.9rem', paddingBottom: '0.75rem', borderBottom: i < 4 ? '1px solid var(--color-border)' : 'none' }}>
-                    <div style={{ marginTop: '0.25rem', width: '8px', height: '8px', borderRadius: '50%', background: i % 2 === 0 ? 'var(--color-success)' : 'var(--color-primary)' }}></div>
-                    <div>
-                      <div>
-                        <span style={{ fontWeight: '600' }}>{s.name}</span>
-                        <span style={{ color: 'var(--color-text-secondary)' }}> {i % 2 === 0 ? 'completed a session' : 'joined a program'}</span>
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.2rem' }}>{Math.floor(Math.random() * 24) + 1}h ago</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="card">
-              <h3 style={{ marginBottom: "1rem" }}>Student Engagement</h3>
-              <ActivityChart data={activityData} />
-            </div>
-            <div className="card">
-              <h3 style={{ marginBottom: "1rem" }}>Average Mood Trend</h3>
-              <MoodTrendChart data={moodData} />
-            </div>
-            <div className="card">
-              <h3 style={{ marginBottom: "1rem" }}>Program Popularity</h3>
-              {/* Simple Bar Chart for Program Popularity using Recharts or mock UI if Recharts not imported for this specific chart type yet. Reusing ActivityChart for simplicity or creating a new one if needed. Using ActivityChart structure for now as it is a BarChart. */}
-              <ActivityChart data={programs?.map(p => ({ name: p.title.substring(0, 10) + '...', steps: Math.floor(Math.random() * 50) + 10 })) || []} />
-            </div>
-            {/* New Analytics Cards */}
-            <div className="card">
+          <div className="dashboard-grid-layout" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {/* Stats Cards */}
+            <div className="card glass-panel" style={{ padding: '1.5rem' }}>
               <h3 style={{ marginBottom: "1rem" }}>System Usage</h3>
-              <div className="stats-grid" style={{ marginBottom: "1rem" }}>
-                <div className="stat-card stat-card-blue">
-                  <h4>Total Logins</h4>
-                  <p className="stat-value">{analytics?.totalLogins || 0}</p>
+              <div className="stats-grid" style={{ marginBottom: "1.5rem" }}>
+                <div className="stat-card" style={{ background: 'var(--color-info-bg)', color: 'var(--color-info-dark)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                  <h4 style={{ fontSize: '0.9rem' }}>Total Logins</h4>
+                  <p className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{analytics?.totalLogins || 0}</p>
                 </div>
-                <div className="stat-card stat-card-green">
-                  <h4>Page Views</h4>
-                  <p className="stat-value">{analytics?.pageViews || 0}</p>
+                <div className="stat-card" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success-dark)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                  <h4 style={{ fontSize: '0.9rem' }}>Page Views</h4>
+                  <p className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{analytics?.pageViews || 0}</p>
                 </div>
               </div>
-              <h4 style={{ marginBottom: "0.5rem" }}>Daily Login Trend</h4>
-              <div style={{ height: "200px" }}>
+              <div style={{ height: "150px" }}>
                 <MoodTrendChart data={loginData} />
               </div>
             </div>
-            <div className="card">
+
+            <div className="card glass-panel" style={{ padding: '1.5rem' }}>
+              <h3 style={{ marginBottom: "1rem" }}>Student Engagement</h3>
+              <ActivityChart data={activityData} />
+            </div>
+
+            <div className="card glass-panel" style={{ padding: '1.5rem' }}>
+              <h3 style={{ marginBottom: "1rem" }}>Avg Mood Trend</h3>
+              <MoodTrendChart data={moodData} />
+            </div>
+
+            <div className="card glass-panel" style={{ padding: '1.5rem' }}>
               <h3 style={{ marginBottom: "1rem" }}>Top Resources</h3>
               <ul className="leaderboard-list">
                 {Object.entries(analytics?.resourceViews || {})
                   .sort(([, a], [, b]) => b - a)
-                  .slice(0, 5)
+                  .slice(0, 3)
                   .map(([id, count], index) => {
                     const resource = resources?.find(r => r.id.toString() === id.toString());
                     return (
-                      <li key={id} className="leaderboard-item">
-                        <span className="leaderboard-rank">{index + 1}</span>
-                        <span className="leaderboard-name">{resource?.title || `Resource ID: ${id}`}</span>
+                      <li key={id} className="leaderboard-item" style={{ padding: '0.75rem', borderBottom: '1px solid var(--color-border)' }}>
+                        <span className="leaderboard-rank" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: '0.8rem' }}>{index + 1}</span>
+                        <span className="leaderboard-name" style={{ flex: 1, marginLeft: '0.75rem', fontWeight: '500' }}>{resource?.title || `ID: ${id}`}</span>
                         <span className="leaderboard-score">{count} views</span>
                       </li>
                     );
                   })}
-                {Object.keys(analytics?.resourceViews || {}).length === 0 && <p>No resource views yet.</p>}
+                {Object.keys(analytics?.resourceViews || {}).length === 0 && <p className="text-muted">No data yet.</p>}
               </ul>
             </div>
           </div>
         </section>
 
-        <div className="dashboard-content master-detail">
-          {/* 🧍 Left Panel – Student List */}
-          <div className="student-list-panel">
-            <h3>Registered Students</h3>
-            <input
-              type="text"
-              placeholder="🔍 Search student..."
-              className="search-box search-container"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Search students by name or department"
-            />
-            <div className="student-list" role="listbox" aria-label="Student list">
+        {/* Master-Detail View */}
+        <div className="admin-master-detail" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1.5rem', height: 'calc(100vh - 200px)' }}>
+
+          {/* Left Panel: Student List */}
+          <div className="student-list-panel glass-panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            <div className="student-list-header" style={{ padding: '1.5rem', borderBottom: '1px solid var(--color-border)' }}>
+              <h3 style={{ margin: 0 }}>Students ({students.length})</h3>
+              <input
+                type="text"
+                placeholder="🔍 Search..."
+                className="form-control"
+                style={{ marginTop: '1rem' }}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="student-list-scroll" style={{ flex: 1, overflowY: 'auto' }}>
               {filteredStudents.map((student, i) => (
                 <div
                   key={student.id}
-                  className={`student-item ${selectedStudent.id === student.id ? "active" : ""}`}
+                  className={`student-list-item ${selectedStudent?.id === student.id ? "active" : ""}`}
                   onClick={() => setSelectedIndex(i)}
-                  role="option"
-                  aria-selected={selectedStudent.id === student.id}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      setSelectedIndex(i);
-                    }
+                  style={{
+                    padding: '1rem 1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    cursor: 'pointer',
+                    borderLeft: selectedStudent?.id === student.id ? '4px solid var(--color-primary)' : '4px solid transparent',
+                    background: selectedStudent?.id === student.id ? 'var(--color-primary-light)' : 'transparent',
+                    transition: 'all 0.2s'
                   }}
                 >
-                  <div className="student-avatar" aria-hidden="true">
+                  <div className="student-avatar-small" style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--color-surface-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem' }}>
                     {student.name.charAt(0)}
                   </div>
-                  <div className="student-info">
-                    <div className="student-name">{student.name}</div>
-                    <div className="student-meta">
-                      {student.department} • {student.wellnessScore}%
-                    </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{student.name}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>{student.department}</div>
                   </div>
-                  <div
-                    className={`status-dot ${student.riskLevel === "High" || student.riskLevel === "Critical"
-                      ? "red"
-                      : student.riskLevel === "Moderate"
-                        ? "yellow"
-                        : "green"
-                      }`}
-                    aria-label={`Risk Level: ${student.riskLevel}`}
-                  ></div>
+                  {student.riskLevel === 'High' && <span style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>⚠</span>}
                 </div>
               ))}
             </div>
-
-            <div className="nav-controls">
-              <button className="btn btn-sm btn-outline" onClick={prevStudent} aria-label="Previous student">
-                ⬅ Previous
-              </button>
-              <button className="btn btn-sm btn-outline" onClick={nextStudent} aria-label="Next student">
-                Next ➡
-              </button>
-            </div>
           </div>
 
-          {/* 📊 Right Panel – Student Details */}
-          <div className="student-detail-panel">
+          {/* Right Panel: Details */}
+          <div className="student-detail-panel glass-panel" style={{ height: '100%', overflowY: 'auto', padding: '2rem' }}>
             {!selectedStudent ? (
-              <div style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)" }}>
-                <h3>Select a student to view details</h3>
+              <div className="center-content" style={{ height: '100%' }}>
+                <p>Select a student to view details</p>
               </div>
             ) : (
-              <>
-                <div className="detail-header">
-                  <div>
-                    <h2>{selectedStudent.name}</h2>
-                    <p>
-                      {selectedStudent.department} | Score: {selectedStudent.wellnessScore}%
-                    </p>
+              <div>
+                <div className="detail-header-premium" style={{ marginBottom: '2rem', paddingBottom: '2rem', borderBottom: '1px solid var(--color-border)' }}>
+                  <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: '700', boxShadow: 'var(--shadow-lg)' }}>
+                      {selectedStudent.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h2 style={{ margin: 0, fontSize: '2rem' }}>{selectedStudent.name}</h2>
+                      <p style={{ color: 'var(--color-text-secondary)', margin: '0.25rem 0' }}>
+                        {selectedStudent.department} • {selectedStudent.year}
+                      </p>
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                        <span className="badge badge-primary">Score: {selectedStudent.wellnessScore}%</span>
+                        <span className={`badge ${selectedStudent.riskLevel === 'High' ? 'badge-danger' : 'badge-success'}`}>
+                          Risk: {selectedStudent.riskLevel}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="action-buttons">
-                    <button className="btn btn-outline" onClick={handleEditStudent} aria-label={`Edit details for ${selectedStudent.name}`}>
-                      ✏️ Edit
-                    </button>
-                    <button className="btn btn-primary" onClick={exportReport} aria-label={`Export report for ${selectedStudent.name}`}>
-                      📤 Export
-                    </button>
+                  <div className="action-buttons" style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+                    <button className="btn btn-outline" onClick={exportReport}>📤 Export Report</button>
+                    <button className="btn btn-danger btn-outline" onClick={() => toast.error(`User ${selectedStudent.name} suspended 🛑`)}>⛔ Suspend User</button>
                   </div>
                 </div>
 
-                <div className="tabs" role="tablist">
+                {/* Tabs */}
+                <div className="admin-tabs no-scrollbar" style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', flexWrap: 'wrap', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
                   {[
-                    "Dashboard Overview",
-                    "Overview",
-                    "Physical Health",
-                    "Mental Wellness",
-                    "Lifestyle & Habits",
-                    "Counseling & Messages",
-                    "Admin Notes",
-                    "Resource Management",
-                    "Program Management",
-                    "Announcements",
-                    "Appointments"
+                    "Dashboard Overview", "Overview", "Physical Health", "Mental Wellness",
+                    "Admin Notes", "Messages", "Announcements", "Financials", "System Controls", "Audit Logs", "Resource Management", "Program Management"
                   ].map(tab => (
                     <button
                       key={tab}
-                      className={`tab-btn ${activeTab === tab ? "active" : ""}`}
+                      className={`btn btn-sm ${activeTab === tab ? "btn-primary" : "btn-ghost"}`}
                       onClick={() => setActiveTab(tab)}
-                      role="tab"
-                      aria-selected={activeTab === tab}
-                      aria-controls={`panel-${tab.replace(/\s+/g, '-')}`}
-                      id={`tab-${tab.replace(/\s+/g, '-')}`}
+                      style={{ borderRadius: 'var(--radius-full)' }}
                     >
                       {tab}
                     </button>
@@ -406,724 +720,277 @@ const AdminDashboard = ({ students, setStudents, updateStudentData, resources, a
                 </div>
 
                 {/* Tab Content */}
-                <div className="tab-content" role="tabpanel" id={`panel-${activeTab.replace(/\s+/g, '-')}`} aria-labelledby={`tab-${activeTab.replace(/\s+/g, '-')}`}>
-                  {activeTab === "Dashboard Overview" && (
-                    <div>
-                      <h3>📊 System Overview</h3>
-                      <div className="stats-grid">
-                        <div className="stat-card stat-card-blue">
-                          <h4>Total Students</h4>
-                          <p className="stat-value">{students.length}</p>
-                        </div>
-                        <div className="stat-card stat-card-red">
-                          <h4>High Risk</h4>
-                          <p className="stat-value">
-                            {students.filter(s => s.riskLevel === "High" || s.riskLevel === "Critical").length}
-                          </p>
-                        </div>
-                        <div className="stat-card stat-card-green">
-                          <h4>Avg Wellness</h4>
-                          <p className="stat-value">
-                            {Math.round(students.reduce((acc, s) => acc + s.wellnessScore, 0) / students.length)}%
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "Overview" && (
-                    <div>
-                      <h3>📋 Student Overview</h3>
-                      <div className="overview-grid">
-                        <div className="card">
-                          <h4>Academic</h4>
-                          <p><b>ID:</b> {selectedStudent.id}</p>
-                          <p><b>Department:</b> {selectedStudent.department}</p>
-                        </div>
-                        <div className="card">
-                          <h4>Wellness Status</h4>
-                          <p><b>Risk Level:</b> <span className={`badge ${selectedStudent.riskLevel === 'High' ? 'badge-danger' : 'badge-success'}`}>{selectedStudent.riskLevel}</span></p>
-                          <p><b>Score:</b> {selectedStudent.wellnessScore}%</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "Physical Health" && (
-                    <div>
-                      <h3>💪 Physical Health Metrics</h3>
-                      <div className="card" style={{ marginTop: "1rem" }}>
-                        <p><b>BMI:</b> {selectedStudent.bmi}</p>
-                        <p><b>Activity Level:</b> {selectedStudent.activity}</p>
-                        <p><b>Average Sleep:</b> {selectedStudent.sleep} hrs/day</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "Mental Wellness" && (
-                    <div>
-                      <h3>🧠 Mental Wellness</h3>
-                      <div className="card" style={{ marginTop: "1rem" }}>
-                        <p><b>Stress Level:</b> {selectedStudent.stress}/10</p>
-                        <p><b>Counseling Sessions:</b> {selectedStudent.sessions}</p>
-                        <p><b>Mood Summary:</b> {selectedStudent.stress > 7 ? "High Stress" : "Stable"}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "Lifestyle & Habits" && (
-                    <div>
-                      <h3>🌿 Lifestyle & Habits</h3>
-                      <div className="card" style={{ marginTop: "1rem" }}>
-                        <p><b>Physical Activity:</b> {selectedStudent.activity}</p>
-                        <p><b>Sleep Hours:</b> {selectedStudent.sleep}</p>
-                        <p><b>Participation:</b> Regular yoga and fitness challenges</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "Counseling & Messages" && (
-                    <div>
-                      <h3>💬 Counseling & Communication</h3>
-                      <div className="messages" role="log" aria-label="Message history">
-                        {selectedStudent.messages.map((m, i) => (
-                          <div key={i} className={`message ${m.from === "Admin" ? "admin" : "student"}`}>
-                            <strong>{m.from}:</strong> {m.text}
-                            <span className="message-time">{m.time}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="chat-input">
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Type message..."
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          aria-label="Type a message"
-                        />
-                        <button className="btn btn-primary" onClick={sendMessage} aria-label="Send message">
-                          Send
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "Admin Notes" && (
-                    <div>
-                      <h3>🗒️ Admin Notes</h3>
-                      <ul className="notes-list">
-                        {selectedStudent.notes.map((n, i) => (
-                          <li key={i} className="note-item">🟢 {n}</li>
-                        ))}
-                      </ul>
-                      <div className="note-input-area">
-                        <textarea
-                          className="form-control"
-                          placeholder="Add a note..."
-                          value={newNote}
-                          onChange={(e) => setNewNote(e.target.value)}
-                          aria-label="Add a new note"
-                        ></textarea>
-                        <button className="btn btn-primary" onClick={addNote} aria-label="Save note">
-                          Add
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "Resource Management" && (
-                    <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                        <h3>📚 Resource Management</h3>
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => {
-                            setEditResourceForm({ title: "", category: "Mental Health", type: "Article", description: "", thumbnail: "📝", duration: "", author: "" });
-                            setIsEditingResource(true);
-                          }}
-                          aria-label="Add new resource"
-                        >
-                          + Add Resource
-                        </button>
-                      </div>
-
-                      <div className="resources-list" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        {resources?.map((resource) => (
-                          <div key={resource.id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem" }}>
-                            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                              <div style={{ fontSize: "2rem" }}>{resource.thumbnail}</div>
-                              <div>
-                                <h4 style={{ margin: 0 }}>{resource.title}</h4>
-                                <span className="badge badge-outline" style={{ fontSize: "0.8rem", marginTop: "0.25rem" }}>{resource.category} • {resource.type}</span>
-                              </div>
-                            </div>
-                            <div style={{ display: "flex", gap: "0.5rem" }}>
-                              <button
-                                className="btn btn-sm btn-outline"
-                                onClick={() => {
-                                  setEditResourceForm(resource);
-                                  setIsEditingResource(true);
-                                }}
-                                aria-label={`Edit resource ${resource.title}`}
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => {
-                                  if (window.confirm("Are you sure you want to delete this resource?")) {
-                                    deleteResource(resource.id);
-                                    toast.success("Resource deleted");
-                                  }
-                                }}
-                                aria-label={`Delete resource ${resource.title}`}
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "Program Management" && (
-                    <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                        <h3>🧘‍♀️ Program Management</h3>
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => {
-                            setEditProgramForm({
-                              id: "",
-                              title: "",
-                              category: "Physical",
-                              icon: "🏃‍♂️",
-                              color: "#4CAF50",
-                              textColor: "#FFFFFF",
-                              description: "",
-                              detailedDescription: "",
-                              img: "",
-                              duration: "",
-                              level: "All Levels"
-                            });
-                            setIsEditingProgram(true);
-                          }}
-                          aria-label="Add new program"
-                        >
-                          + Add Program
-                        </button>
-                      </div>
-
-                      <div className="resources-list" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        {programs?.map((program) => (
-                          <div key={program.id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem" }}>
-                            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                              <div style={{ fontSize: "2rem" }}>{program.icon}</div>
-                              <div>
-                                <h4 style={{ margin: 0 }}>{program.title}</h4>
-                                <span className="badge badge-outline" style={{ fontSize: "0.8rem", marginTop: "0.25rem" }}>{program.category} • {program.duration}</span>
-                              </div>
-                            </div>
-                            <div style={{ display: "flex", gap: "0.5rem" }}>
-                              <button
-                                className="btn btn-sm btn-outline"
-                                onClick={() => {
-                                  setEditProgramForm(program);
-                                  setIsEditingProgram(true);
-                                }}
-                                aria-label={`Edit program ${program.title}`}
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => {
-                                  if (window.confirm("Are you sure you want to delete this program?")) {
-                                    deleteProgram(program.id);
-                                    toast.success("Program deleted");
-                                  }
-                                }}
-                                aria-label={`Delete program ${program.title}`}
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          </div>
-
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "Announcements" && (
-                    <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-                        <h3>📢 Announcements</h3>
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => setIsAddingAnnouncement(true)}
-                          aria-label="Post new announcement"
-                        >
-                          + Post Announcement
-                        </button>
-                      </div>
-
-                      <div className="announcements-list" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        {announcements?.map((announcement) => (
-                          <div key={announcement.id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", borderLeft: `4px solid ${announcement.type === 'Alert' ? 'var(--color-danger)' : announcement.type === 'Success' ? 'var(--color-success)' : 'var(--color-primary)'}` }}>
-                            <div>
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <h4 style={{ margin: 0 }}>{announcement.title}</h4>
-                                <span className="badge badge-sm">{announcement.type}</span>
-                              </div>
-                              <p style={{ margin: "0.25rem 0 0", fontSize: "0.9rem" }}>{announcement.content}</p>
-                              <span style={{ fontSize: "0.8rem", color: "var(--color-text-secondary)" }}>{announcement.date}</span>
-                            </div>
-                            <button
-                              className="btn btn-sm btn-danger"
-                              onClick={() => {
-                                if (window.confirm("Delete this announcement?")) {
-                                  deleteAnnouncement(announcement.id);
-                                  toast.success("Announcement deleted");
-                                }
-                              }}
-                              aria-label={`Delete announcement ${announcement.title}`}
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        ))}
-                        {(!announcements || announcements.length === 0) && <p>No announcements posted.</p>}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Add Announcement Modal */}
-                  {isAddingAnnouncement && (
-                    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="add-announcement-title">
-                      <div className="modal-content">
-                        <h3 id="add-announcement-title">Post Announcement</h3>
-                        <div className="form-group">
-                          <label>Title</label>
-                          <input
-                            className="form-control"
-                            value={newAnnouncement.title}
-                            onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Type</label>
-                          <select
-                            className="form-control"
-                            value={newAnnouncement.type}
-                            onChange={(e) => setNewAnnouncement({ ...newAnnouncement, type: e.target.value })}
-                          >
-                            <option value="Info">Info</option>
-                            <option value="Alert">Alert</option>
-                            <option value="Success">Success</option>
-                          </select>
-                        </div>
-                        <div className="form-group">
-                          <label>Content</label>
-                          <textarea
-                            className="form-control"
-                            value={newAnnouncement.content}
-                            onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
-                          />
-                        </div>
-                        <div className="modal-actions">
-                          <button className="btn btn-outline" onClick={() => setIsAddingAnnouncement(false)}>Cancel</button>
-                          <button
-                            className="btn btn-primary"
-                            onClick={() => {
-                              if (!newAnnouncement.title || !newAnnouncement.content) {
-                                toast.error("Please fill in all fields");
-                                return;
-                              }
-                              addAnnouncement(newAnnouncement);
-                              setNewAnnouncement({ title: "", content: "", type: "Info" });
-                              setIsAddingAnnouncement(false);
-                              toast.success("Announcement posted");
-                            }}
-                          >
-                            Post
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Edit Resource Modal */}
-                  {
-                    isEditingResource && (
-                      <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="edit-resource-title">
-                        <div className="modal-content" style={{ maxWidth: showPreview ? "700px" : "500px" }}>
-                          {showPreview ? (
-                            // 👁️ Preview Mode (Mock Student View)
-                            <div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1.5rem' }}>
-                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                  <div style={{ fontSize: '3rem' }}>{editResourceForm.thumbnail}</div>
-                                  <div>
-                                    <h2 style={{ marginBottom: '0.25rem' }}>{editResourceForm.title || "Untitled Resource"}</h2>
-                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                      <span className="badge badge-primary">{editResourceForm.category}</span>
-                                      <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>• {editResourceForm.type}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <button className="btn btn-ghost" onClick={() => setShowPreview(false)}>✕</button>
-                              </div>
-
-                              <div style={{ background: 'var(--color-surface-alt)', padding: '2rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', textAlign: 'center' }}>
-                                <p style={{ color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>
-                                  [Content Placeholder: In a real app, the full article text or video player would appear here.]
-                                </p>
-                              </div>
-
-                              <div style={{ marginBottom: '1.5rem' }}>
-                                <h3>Description</h3>
-                                <p>{editResourceForm.description || "No description provided."}</p>
-                              </div>
-
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
-                                <div>
-                                  <strong>Author:</strong> {editResourceForm.author || "Unknown"}<br />
-                                  <strong>Duration:</strong> {editResourceForm.duration || "N/A"}
-                                </div>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                  <button className="btn btn-outline">Save for Later</button>
-                                  <button className="btn btn-primary">Start Now</button>
-                                </div>
-                              </div>
-
-                              <div className="modal-actions" style={{ marginTop: "2rem", borderTop: "1px solid var(--color-border)", paddingTop: "1rem" }}>
-                                <button className="btn btn-outline" onClick={() => setShowPreview(false)}>⬅ Back to Edit</button>
-                                <button
-                                  className="btn btn-primary"
-                                  onClick={() => {
-                                    if (editResourceForm.id) {
-                                      updateResource(editResourceForm);
-                                      toast.success("Resource updated");
-                                    } else {
-                                      addResource(editResourceForm);
-                                      toast.success("Resource added");
-                                    }
-                                    setIsEditingResource(false);
-                                    setShowPreview(false);
-                                  }}
-                                >
-                                  Save & Publish
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            // ✏️ Edit Mode
-                            <div>
-                              <h3 id="edit-resource-title">{editResourceForm.id ? "Edit Resource" : "Add Resource"}</h3>
-                              <div className="form-group">
-                                <label>Title</label>
-                                <input
-                                  className="form-control"
-                                  value={editResourceForm.title}
-                                  onChange={(e) => setEditResourceForm({ ...editResourceForm, title: e.target.value })}
-                                />
-                              </div>
-                              <div className="form-group">
-                                <label>Category</label>
-                                <select
-                                  className="form-control"
-                                  value={editResourceForm.category}
-                                  onChange={(e) => setEditResourceForm({ ...editResourceForm, category: e.target.value })}
-                                >
-                                  <option value="Mental Health">Mental Health</option>
-                                  <option value="Fitness">Fitness</option>
-                                  <option value="Nutrition">Nutrition</option>
-                                  <option value="Sleep">Sleep</option>
-                                </select>
-                              </div>
-                              <div className="form-group">
-                                <label>Type</label>
-                                <select
-                                  className="form-control"
-                                  value={editResourceForm.type}
-                                  onChange={(e) => setEditResourceForm({ ...editResourceForm, type: e.target.value })}
-                                >
-                                  <option value="Article">Article</option>
-                                  <option value="Video">Video</option>
-                                  <option value="Audio">Audio</option>
-                                  <option value="Challenge">Challenge</option>
-                                </select>
-                              </div>
-                              <div className="form-group">
-                                <label>Description</label>
-                                <textarea
-                                  className="form-control"
-                                  value={editResourceForm.description}
-                                  onChange={(e) => setEditResourceForm({ ...editResourceForm, description: e.target.value })}
-                                />
-                              </div>
-                              <div className="modal-actions">
-                                <button className="btn btn-outline" onClick={() => setIsEditingResource(false)}>Cancel</button>
-                                <button className="btn btn-ghost" onClick={() => setShowPreview(true)}>👁️ Preview</button>
-                                <button
-                                  className="btn btn-primary"
-                                  onClick={() => {
-                                    if (editResourceForm.id) {
-                                      updateResource(editResourceForm);
-                                      toast.success("Resource updated");
-                                    } else {
-                                      addResource(editResourceForm);
-                                      toast.success("Resource added");
-                                    }
-                                    setIsEditingResource(false);
-                                  }}
-                                >
-                                  Save
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  {/* Edit Program Modal */}
-                  {isEditingProgram && (
-                    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="edit-program-title">
-                      <div className="modal-content" style={{ maxWidth: "600px" }}>
-                        <h3 id="edit-program-title">{editProgramForm.id ? "Edit Program" : "Add Program"}</h3>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                          <div className="form-group">
-                            <label>Title</label>
-                            <input
-                              className="form-control"
-                              value={editProgramForm.title}
-                              onChange={(e) => setEditProgramForm({ ...editProgramForm, title: e.target.value })}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label>Category</label>
-                            <select
-                              className="form-control"
-                              value={editProgramForm.category}
-                              onChange={(e) => setEditProgramForm({ ...editProgramForm, category: e.target.value })}
-                            >
-                              <option value="Physical">Physical</option>
-                              <option value="Mental">Mental</option>
-                              <option value="Lifestyle">Lifestyle</option>
-                            </select>
-                          </div>
-                          <div className="form-group">
-                            <label>Icon (Emoji)</label>
-                            <input
-                              className="form-control"
-                              value={editProgramForm.icon}
-                              onChange={(e) => setEditProgramForm({ ...editProgramForm, icon: e.target.value })}
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label>Duration</label>
-                            <input
-                              className="form-control"
-                              value={editProgramForm.duration}
-                              onChange={(e) => setEditProgramForm({ ...editProgramForm, duration: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="form-group">
-                          <label>Short Description</label>
-                          <input
-                            className="form-control"
-                            value={editProgramForm.description}
-                            onChange={(e) => setEditProgramForm({ ...editProgramForm, description: e.target.value })}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Detailed Description</label>
-                          <textarea
-                            className="form-control"
-                            value={editProgramForm.detailedDescription}
-                            onChange={(e) => setEditProgramForm({ ...editProgramForm, detailedDescription: e.target.value })}
-                          />
-                        </div>
-                        <div className="form-group">
-                          <label>Image URL</label>
-                          <input
-                            className="form-control"
-                            value={editProgramForm.img}
-                            onChange={(e) => setEditProgramForm({ ...editProgramForm, img: e.target.value })}
-                          />
-                        </div>
-                        <div className="modal-actions">
-                          <button className="btn btn-outline" onClick={() => setIsEditingProgram(false)}>Cancel</button>
-                          <button
-                            className="btn btn-primary"
-                            onClick={() => {
-                              if (editProgramForm.id) {
-                                updateProgram(editProgramForm);
-                                toast.success("Program updated");
-                              } else {
-                                addProgram(editProgramForm);
-                                toast.success("Program added");
-                              }
-                              setIsEditingProgram(false);
-                            }}
-                          >
-                            Save
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "Appointments" && (
-                    <div>
-                      <h3>📅 Appointment Requests</h3>
-                      <div className="card">
-                        <table className="table" style={{ width: "100%", borderCollapse: "collapse" }}>
-                          <thead>
-                            <tr style={{ borderBottom: "1px solid var(--color-border)", textAlign: "left" }}>
-                              <th style={{ padding: "1rem" }}>Student</th>
-                              <th style={{ padding: "1rem" }}>Type</th>
-                              <th style={{ padding: "1rem" }}>Date</th>
-                              <th style={{ padding: "1rem" }}>Status</th>
-                              <th style={{ padding: "1rem" }}>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {appointments.length > 0 ? (
-                              appointments.map((appt) => (
-                                <tr key={appt.id} style={{ borderBottom: "1px solid var(--color-border)" }}>
-                                  <td style={{ padding: "1rem" }}>{appt.studentName} (ID: {appt.studentId})</td>
-                                  <td style={{ padding: "1rem" }}>{appt.type}</td>
-                                  <td style={{ padding: "1rem" }}>{appt.date}</td>
-                                  <td style={{ padding: "1rem" }}>
-                                    <span className={`badge ${appt.status === 'Confirmed' ? 'badge-success' : appt.status === 'Rejected' ? 'badge-danger' : 'badge-warning'}`}>
-                                      {appt.status}
-                                    </span>
-                                  </td>
-                                  <td style={{ padding: "1rem" }}>
-                                    {appt.status === "Pending" && (
-                                      <div style={{ display: "flex", gap: "0.5rem" }}>
-                                        <button
-                                          className="btn btn-sm btn-success"
-                                          onClick={() => updateAppointmentStatus(appt.id, "Confirmed", "Approved by Admin", user?.name || "Admin")}
-                                        >
-                                          ✅
-                                        </button>
-                                        <button
-                                          className="btn btn-sm btn-danger"
-                                          onClick={() => {
-                                            setSelectedAppointment(appt);
-                                            setAppointmentAction("Reject");
-                                            setAppointmentNote("");
-                                          }}
-                                        >
-                                          ❌
-                                        </button>
-                                        <button
-                                          className="btn btn-sm btn-outline"
-                                          onClick={() => {
-                                            setSelectedAppointment(appt);
-                                            setAppointmentAction("Reschedule");
-                                            setAppointmentNote("");
-                                            setRescheduleDate("");
-                                          }}
-                                        >
-                                          🗓️
-                                        </button>
-                                      </div>
-                                    )}
-                                    {appt.status !== "Pending" && (
-                                      <div style={{ fontSize: "0.85rem" }}>
-                                        <div style={{ color: "var(--color-text-secondary)" }}>{appt.notes}</div>
-                                        {appt.assignedTo && (
-                                          <div style={{ color: "var(--color-primary)", fontWeight: "500", marginTop: "0.25rem" }}>
-                                            👤 Assigned to: {appt.assignedTo}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan="5" style={{ padding: "2rem", textAlign: "center", color: "var(--color-text-secondary)" }}>
-                                  No appointment requests found.
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Action Modal (Reject/Reschedule) */}
-                      {selectedAppointment && (
-                        <div className="modal-overlay">
-                          <div className="modal-content">
-                            <h3>{appointmentAction} Appointment</h3>
-                            <p>For: {selectedAppointment.studentName} - {selectedAppointment.type}</p>
-
-                            {appointmentAction === "Reschedule" && (
-                              <div className="form-group">
-                                <label>New Date & Time</label>
-                                <input
-                                  type="datetime-local"
-                                  className="form-control"
-                                  value={rescheduleDate}
-                                  onChange={(e) => setRescheduleDate(e.target.value)}
-                                />
-                              </div>
-                            )}
-
-                            <div className="form-group">
-                              <label>Reason / Note</label>
-                              <textarea
-                                className="form-control"
-                                value={appointmentNote}
-                                onChange={(e) => setAppointmentNote(e.target.value)}
-                                placeholder={appointmentAction === "Reschedule" ? "Reason for rescheduling..." : "Enter reason for rejection..."}
-                              />
-                            </div>
-                            <div className="modal-actions">
-                              <button className="btn btn-outline" onClick={() => setSelectedAppointment(null)}>Cancel</button>
-                              <button
-                                className="btn btn-primary"
-                                onClick={() => {
-                                  if (appointmentAction === "Reschedule" && !rescheduleDate) {
-                                    toast.error("Please select a new date");
-                                    return;
-                                  }
-                                  updateAppointmentStatus(
-                                    selectedAppointment.id,
-                                    appointmentAction === "Reject" ? "Rejected" : "Rescheduled",
-                                    appointmentNote,
-                                    null,
-                                    appointmentAction === "Reschedule" ? rescheduleDate : null
-                                  );
-                                  setSelectedAppointment(null);
-                                  toast.success(`Appointment ${appointmentAction}d`);
-                                }}
-                              >
-                                Confirm {appointmentAction}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                <div className="fade-in">
+                  {renderTabContent()}
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
-      </div >
+
+
+      </div>
+      {/* Add Announcement Modal */}
+      {
+        isAddingAnnouncement && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setIsAddingAnnouncement(false)}>
+            <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '2rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1.5rem' }}>📢 Post Announcement</h3>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Title</label>
+                <input className="form-control" value={newAnnouncement.title} onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })} autoFocus />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Content</label>
+                <textarea className="form-control" value={newAnnouncement.content} onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })} rows="4" />
+              </div>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button className="btn btn-outline" onClick={() => setIsAddingAnnouncement(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => {
+                  if (!newAnnouncement.title || !newAnnouncement.content) return toast.error("Please fill all fields");
+                  addAnnouncement({ ...newAnnouncement, id: Date.now(), date: new Date().toLocaleDateString() });
+                  setIsAddingAnnouncement(false);
+                  setNewAnnouncement({ title: "", content: "", type: "Info" });
+                  toast.success("Announcement Posted! 📢");
+                }}>Post</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Add Resource Modal */}
+      {
+        isAddingResource && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setIsAddingResource(false)}>
+            <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '2rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1.5rem' }}>📚 Add Resource</h3>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Title</label>
+                <input className="form-control" value={newResource.title} onChange={(e) => setNewResource({ ...newResource, title: e.target.value })} autoFocus />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Category</label>
+                <select className="form-control" value={newResource.category} onChange={(e) => setNewResource({ ...newResource, category: e.target.value })}>
+                  <option value="General">General</option>
+                  <option value="Mental Health">Mental Health</option>
+                  <option value="Physical Health">Physical Health</option>
+                  <option value="Academic">Academic</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Link (URL)</label>
+                <input className="form-control" value={newResource.link} onChange={(e) => setNewResource({ ...newResource, link: e.target.value })} placeholder="https://..." />
+              </div>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button className="btn btn-outline" onClick={() => setIsAddingResource(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => {
+                  if (!newResource.title) return toast.error("Please enter a title");
+                  addResource({ ...newResource, id: Date.now() });
+                  setIsAddingResource(false);
+                  setNewResource({ title: "", category: "General", thumbnail: "📚", isFeatured: false, link: "#" });
+                  toast.success("Resource Added! 📚");
+                }}>Add Resource</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Add Program Modal */}
+      {
+        isAddingProgram && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setIsAddingProgram(false)}>
+            <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '2rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1.5rem' }}>🧘‍♀️ Add Wellness Program</h3>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Title</label>
+                <input className="form-control" value={newProgram.title} onChange={(e) => setNewProgram({ ...newProgram, title: e.target.value })} autoFocus />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Category</label>
+                <select className="form-control" value={newProgram.category} onChange={(e) => setNewProgram({ ...newProgram, category: e.target.value })}>
+                  <option value="Wellness">Wellness</option>
+                  <option value="Fitness">Fitness</option>
+                  <option value="Meditation">Meditation</option>
+                  <option value="Nutrition">Nutrition</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Duration</label>
+                <input className="form-control" value={newProgram.duration} onChange={(e) => setNewProgram({ ...newProgram, duration: e.target.value })} placeholder="e.g. 4 Weeks" />
+              </div>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button className="btn btn-outline" onClick={() => setIsAddingProgram(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => {
+                  if (!newProgram.title) return toast.error("Please enter a title");
+                  addProgram({ ...newProgram, id: Date.now().toString() });
+                  setIsAddingProgram(false);
+                  setNewProgram({ title: "", category: "Wellness", icon: "🧘‍♀️", duration: "4 Weeks", level: "Beginner" });
+                  toast.success("Program Created! 🧘‍♀️");
+                }}>Create Program</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Poll Creator Modal */}
+      {
+        showPollModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowPollModal(false)}>
+            <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '2rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ marginTop: 0, marginBottom: '1.5rem' }}>📊 Create New Poll</h3>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Question</label>
+                <input className="form-control" placeholder="e.g. What stress relief workshop do you want?" id="pollQuestion" />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Options (comma separated)</label>
+                <input className="form-control" placeholder="Yoga, Meditation, Painting" id="pollOptions" />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button className="btn btn-outline" onClick={() => setShowPollModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => {
+                  const question = document.getElementById('pollQuestion').value;
+                  const options = document.getElementById('pollOptions').value.split(',').map(o => o.trim()).filter(o => o);
+                  if (question && options.length > 1) {
+                    addPoll({ question, options });
+                    setShowPollModal(false);
+                    toast.success("Poll Launched! 🚀");
+                  } else {
+                    toast.error("Invalid Poll Data");
+                  }
+                }}>Launch Poll</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Edit Announcement Modal */}
+      {
+        editingAnnouncement && (
+          <div className="modal-overlay" onClick={() => setEditingAnnouncement(null)}>
+            <div className="glass-panel modal-content" onClick={e => e.stopPropagation()}>
+              <h3 className="text-xl font-bold mb-4">✏️ Edit Announcement</h3>
+              <div className="form-group mb-4">
+                <label className="form-label">Title</label>
+                <input
+                  className="form-control"
+                  value={editingAnnouncement.title}
+                  onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, title: e.target.value })}
+                  autoFocus
+                />
+              </div>
+              <div className="form-group mb-4">
+                <label className="form-label">Type</label>
+                <select
+                  className="form-control"
+                  value={editingAnnouncement.type}
+                  onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, type: e.target.value })}
+                >
+                  <option value="Info">Info ℹ️</option>
+                  <option value="Alert">Alert 🚨</option>
+                  <option value="Event">Event 📅</option>
+                </select>
+              </div>
+              <div className="form-group mb-6">
+                <label className="form-label">Content</label>
+                <textarea
+                  className="form-control"
+                  value={editingAnnouncement.content}
+                  onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, content: e.target.value })}
+                  rows="4"
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button className="btn btn-outline" onClick={() => setEditingAnnouncement(null)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => {
+                  if (!editingAnnouncement.title || !editingAnnouncement.content) return toast.error("Please fill all fields");
+                  updateAnnouncement(editingAnnouncement);
+                  setEditingAnnouncement(null);
+                }}>Save Changes</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Edit Resource Modal */}
+      {
+        editingResource && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setEditingResource(null)}>
+            <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '2rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1.5rem' }}>✏️ Edit Resource</h3>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Title</label>
+                <input className="form-control" value={editingResource.title} onChange={(e) => setEditingResource({ ...editingResource, title: e.target.value })} autoFocus />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Category</label>
+                <select className="form-control" value={editingResource.category} onChange={(e) => setEditingResource({ ...editingResource, category: e.target.value })}>
+                  <option value="General">General</option>
+                  <option value="Mental Health">Mental Health</option>
+                  <option value="Physical Health">Physical Health</option>
+                  <option value="Academic">Academic</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Link (URL)</label>
+                <input className="form-control" value={editingResource.link} onChange={(e) => setEditingResource({ ...editingResource, link: e.target.value })} />
+              </div>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button className="btn btn-outline" onClick={() => setEditingResource(null)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => {
+                  if (!editingResource.title) return toast.error("Please enter a title");
+                  updateResource(editingResource);
+                  setEditingResource(null);
+                  toast.success("Resource Updated! ✅");
+                }}>Save Changes</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Edit Program Modal */}
+      {
+        editingProgram && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setEditingProgram(null)}>
+            <div className="glass-panel" style={{ width: '90%', maxWidth: '500px', padding: '2rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1.5rem' }}>✏️ Edit Program</h3>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Title</label>
+                <input className="form-control" value={editingProgram.title} onChange={(e) => setEditingProgram({ ...editingProgram, title: e.target.value })} autoFocus />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Category</label>
+                <select className="form-control" value={editingProgram.category} onChange={(e) => setEditingProgram({ ...editingProgram, category: e.target.value })}>
+                  <option value="Wellness">Wellness</option>
+                  <option value="Fitness">Fitness</option>
+                  <option value="Meditation">Meditation</option>
+                  <option value="Nutrition">Nutrition</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Duration</label>
+                <input className="form-control" value={editingProgram.duration} onChange={(e) => setEditingProgram({ ...editingProgram, duration: e.target.value })} />
+              </div>
+              <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                <button className="btn btn-outline" onClick={() => setEditingProgram(null)}>Cancel</button>
+                <button className="btn btn-primary" onClick={() => {
+                  if (!editingProgram.title) return toast.error("Please enter a title");
+                  updateProgram(editingProgram);
+                  setEditingProgram(null);
+                  toast.success("Program Updated! ✅");
+                }}>Save Changes</button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
     </div >
   );
 };
