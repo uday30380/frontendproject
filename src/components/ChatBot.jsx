@@ -5,6 +5,8 @@ const ChatBot = ({ onSendMessage, messages = [], user }) => {
     const [input, setInput] = useState("");
     const messagesEndRef = useRef(null);
     const [isTyping, setIsTyping] = useState(false);
+    // Optimistic UI state
+    const [localMessages, setLocalMessages] = useState([]);
 
     // Initial Welcome Message
     const welcomeMessage = { id: 'welcome', text: "Hi there! 👋 I'm your wellness assistant. How can I help you today?", sender: "bot" };
@@ -16,10 +18,7 @@ const ChatBot = ({ onSendMessage, messages = [], user }) => {
     // Logic: If we have history, show history. If not, show welcome.
     // For simplicity, we just prepend welcome if list is empty? Or always show it?
     // Let's always show welcome message first for friendly UI.
-    const displayMessages = [welcomeMessage, ...userMessages];
 
-    // Optimistic UI state
-    const [localMessages, setLocalMessages] = useState([]);
 
     const toggleChat = () => setIsOpen(!isOpen);
 
@@ -38,34 +37,27 @@ const ChatBot = ({ onSendMessage, messages = [], user }) => {
     const handleSend = async (text = input) => {
         if (!text.trim()) return;
 
-        const optimisticMessage = {
-            id: Date.now(), // Temp ID
-            text: text,
-            sender: "user",
-            status: "sending"
-        };
+        // Optimistic Update
+        const tempId = Date.now();
+        const optimisticMsg = { id: tempId, text, sender: "user", status: "sending" };
+        setLocalMessages(prev => [...prev, optimisticMsg]);
 
-        // Add to local state immediately
-        setLocalMessages(prev => [...prev, optimisticMessage]);
         setInput("");
         setIsTyping(true);
 
         try {
+            // Send to backend
             if (onSendMessage) {
                 await onSendMessage(text);
             }
-            // Success - remove from local (assuming it will appear in props soon/immediately)
-            // or keep it but mark sent? 
-            // If we remove it, it might flicker if prop hasn't arrived.
-            // Best: We don't remove, we just let the prop list take over?
-            // Actually, usually `onSendMessage` (App.jsx) updates the state `messages` AFTER awaiting firebase.
-            // So if we just fire and forget, we have a gap.
-
-            // Let's just rely on the fact that we can append local messages that DO NOT exist in props.
         } catch (e) {
             console.error("Failed to send", e);
-            // Mark as failed in local?
         }
+
+        // Auto-reply Logic (Visual only)
+        setTimeout(() => {
+            setIsTyping(false);
+        }, 1000);
     };
 
     // Combine logic: 
